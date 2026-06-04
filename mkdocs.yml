@@ -54,3 +54,16 @@ nav:
   - Dashboards: dashboards.md
   - OpenTelemetry: opentelemetry.md
   - CI/CD & SBOM: cicd.md
+  - Project:
+      - Changelog: changelog.md
+      - Contributing: contributing.md
+      - Security: security.md
+  - Architecture Decisions:
+      - Index: adr/README.md
+      - "0001: Record Architecture Decisions": adr/0001-record-architecture-decisions.md
+      - "0002: Snapshot Collection Model": adr/0002-snapshot-collection-model.md
+      - "0003: Use gopowerstore Client": adr/0003-use-gopowerstore-client.md
+      - "0004: Dual Metrics Paths": adr/0004-dual-metrics-paths-auto-detection.md
+      - "0005: Multi-Array and Array Label": adr/0005-multi-array-and-array-label.md
+      - "0006: Metric Naming and Units": adr/0006-metric-naming-and-units.md
+      - "0007: Serve HTTP Before First Collection": adr/0007-serve-http-before-first-collection.md

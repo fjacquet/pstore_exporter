@@ -11,7 +11,7 @@
 A Go exporter for **Dell PowerStore** arrays. It authenticates to the PowerStore REST API,
 collects the full performance and capacity statistic set, and exposes the metrics via
 **both** a Prometheus `/metrics` endpoint **and** an OTLP metric push. It follows the
-architecture of [`nbu_exporter`](https://github.com/fjacquet/nbu_exporter).
+architecture of [`pflex_exporter`](https://github.com/fjacquet/pflex_exporter).
 
 ## Features
 
