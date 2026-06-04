@@ -33,18 +33,18 @@ func TestResolveSecretsInterpolatesAndLoadsFile(t *testing.T) {
 		t.Fatalf("write pw file: %v", err)
 	}
 
-	cfg := &models.Config{Clusters: []models.ClusterConfig{
-		{Name: "a", Gateway: "gw-a", Username: "u", Password: "${PFLEX_PW1}"},
-		{Name: "b", Gateway: "gw-b", Username: "u", PasswordFile: pwFile},
+	cfg := &models.Config{Arrays: []models.ArrayConfig{
+		{Name: "a", Endpoint: "https://10.0.0.1/api/rest", Username: "u", Password: "${PFLEX_PW1}"},
+		{Name: "b", Endpoint: "https://10.0.0.2/api/rest", Username: "u", PasswordFile: pwFile},
 	}}
 
 	if err := ResolveSecrets(cfg); err != nil {
 		t.Fatalf("ResolveSecrets: %v", err)
 	}
-	if cfg.Clusters[0].Password != "envpass" {
-		t.Errorf("env password = %q", cfg.Clusters[0].Password)
+	if cfg.Arrays[0].Password != "envpass" {
+		t.Errorf("env password = %q", cfg.Arrays[0].Password)
 	}
-	if cfg.Clusters[1].Password != "filepass" {
-		t.Errorf("file password = %q (want trimmed 'filepass')", cfg.Clusters[1].Password)
+	if cfg.Arrays[1].Password != "filepass" {
+		t.Errorf("file password = %q (want trimmed 'filepass')", cfg.Arrays[1].Password)
 	}
 }

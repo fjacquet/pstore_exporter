@@ -31,32 +31,32 @@ func ExpandEnv(s string) (string, error) {
 	return out, nil
 }
 
-// ResolveSecrets expands ${ENV} references in cluster gateway/password fields and
+// ResolveSecrets expands ${ENV} references in array endpoint/password fields and
 // loads passwords from passwordFile when set. Mutates cfg in place.
 func ResolveSecrets(cfg *models.Config) error {
-	for i := range cfg.Clusters {
-		cl := &cfg.Clusters[i]
+	for i := range cfg.Arrays {
+		a := &cfg.Arrays[i]
 
-		gateway, err := ExpandEnv(cl.Gateway)
+		endpoint, err := ExpandEnv(a.Endpoint)
 		if err != nil {
-			return fmt.Errorf("cluster %q gateway: %w", cl.Name, err)
+			return fmt.Errorf("array %q endpoint: %w", a.Name, err)
 		}
-		cl.Gateway = gateway
+		a.Endpoint = endpoint
 
-		if cl.Password == "" && cl.PasswordFile != "" {
-			data, err := os.ReadFile(cl.PasswordFile)
+		if a.Password == "" && a.PasswordFile != "" {
+			data, err := os.ReadFile(a.PasswordFile)
 			if err != nil {
-				return fmt.Errorf("cluster %q passwordFile: %w", cl.Name, err)
+				return fmt.Errorf("array %q passwordFile: %w", a.Name, err)
 			}
-			cl.Password = strings.TrimSpace(string(data))
+			a.Password = strings.TrimSpace(string(data))
 			continue
 		}
 
-		password, err := ExpandEnv(cl.Password)
+		password, err := ExpandEnv(a.Password)
 		if err != nil {
-			return fmt.Errorf("cluster %q password: %w", cl.Name, err)
+			return fmt.Errorf("array %q password: %w", a.Name, err)
 		}
-		cl.Password = password
+		a.Password = password
 	}
 	return nil
 }
