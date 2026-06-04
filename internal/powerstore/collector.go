@@ -2,6 +2,7 @@ package powerstore
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -12,11 +13,20 @@ import (
 // Collector runs the background collection loop: every interval it polls all arrays in
 // parallel and publishes a fresh Snapshot. One array's failure does not affect others.
 type Collector struct {
+	mu       sync.RWMutex // guards clients across hot reloads
 	clients  []Client
 	store    *SnapshotStore
 	interval time.Duration
 	timeout  time.Duration
 	tracing  *TracerWrapper
+}
+
+// SetClients atomically replaces the client set, used on config hot reload when the
+// array set changes. Safe to call while the background loop is running.
+func (c *Collector) SetClients(clients []Client) {
+	c.mu.Lock()
+	c.clients = clients
+	c.mu.Unlock()
 }
 
 // NewCollector creates a collection loop over the given per-array clients.
@@ -55,9 +65,13 @@ func (c *Collector) collectAll(ctx context.Context) *Snapshot {
 	ctx, span := c.tracing.StartSpan(ctx, "collect.cycle", trace.SpanKindInternal)
 	defer span.End()
 
-	results := make([]*ArraySnapshot, len(c.clients))
+	c.mu.RLock()
+	clients := c.clients
+	c.mu.RUnlock()
+
+	results := make([]*ArraySnapshot, len(clients))
 	g, gctx := errgroup.WithContext(ctx)
-	for i, client := range c.clients {
+	for i, client := range clients {
 		i, client := i, client
 		g.Go(func() error {
 			results[i] = c.collectArray(gctx, client)

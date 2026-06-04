@@ -22,10 +22,14 @@ func (m *mockClient) GetTopology(context.Context) (*Topology, error) {
 	}
 	return &Topology{}, nil
 }
-func (m *mockClient) BulkCapable(context.Context, *Topology) bool                   { return m.bulk }
-func (m *mockClient) PerEntityMetrics(context.Context, *Topology) ([]Sample, error) { return m.perEnt, nil }
-func (m *mockClient) BulkMetrics(context.Context, *Topology) ([]Sample, error)      { return m.bulkSamp, nil }
-func (m *mockClient) Close() error                                                  { return nil }
+func (m *mockClient) BulkCapable(context.Context, *Topology) bool { return m.bulk }
+func (m *mockClient) PerEntityMetrics(context.Context, *Topology) ([]Sample, error) {
+	return m.perEnt, nil
+}
+func (m *mockClient) BulkMetrics(context.Context, *Topology) ([]Sample, error) {
+	return m.bulkSamp, nil
+}
+func (m *mockClient) Close() error { return nil }
 
 func TestCollectOnceGracefulDegradation(t *testing.T) {
 	good := &mockClient{name: "ok", bulk: false, perEnt: []Sample{{Name: "powerstore_volume_read_iops", Labels: []Label{{"array", "ok"}}, Value: 1}}}
