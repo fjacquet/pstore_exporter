@@ -35,5 +35,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MkDocs-Material documentation site.
 - GitHub Actions workflows for CI, release, and docs publication.
 
-[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.1.0...maincd
+[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.1.0...main
 [0.1.0]: https://github.com/fjacquet/pstore_exporter/releases/tag/v0.1.0

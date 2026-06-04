@@ -6,3 +6,6 @@ coverage.html
 clusters.yaml
 *.local.yaml
 .claude.local.md
+
+# MkDocs build output
+/site/
