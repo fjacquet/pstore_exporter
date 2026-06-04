@@ -153,13 +153,6 @@ func (c *ArrayClient) BulkCapable(ctx context.Context, _ *Topology) bool {
 	return bulkCapableFromVersion(c.softwareVersion)
 }
 
-// PerEntityMetrics collects metrics one entity at a time via the typed client.
-//
-// TODO(task-13): replaced by the real implementation in perentity.go.
-func (c *ArrayClient) PerEntityMetrics(ctx context.Context, topo *Topology) ([]Sample, error) {
-	return nil, nil
-}
-
 // BulkMetrics collects metrics via the bulk CSV API.
 //
 // TODO(task-15): replaced by the real implementation in bulk.go.
