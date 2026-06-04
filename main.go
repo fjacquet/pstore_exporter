@@ -80,19 +80,23 @@ func NewServer(safeCfg *models.SafeConfig, configPath string) *Server {
 	}
 }
 
-// Start initializes telemetry, builds the client pool, runs the first collection cycle,
-// wires both export paths, and starts the HTTP server.
+// Start initializes telemetry and starts the HTTP server immediately so /metrics
+// and /health are served from the empty-seeded store without waiting on array
+// client construction or the first collection. Building the clients, running the
+// initial collection, wiring the OTLP path, and starting the background loop all
+// happen in a background goroutine so nothing user-facing blocks ~80s on an
+// unreachable array.
+//
+// In --once mode there is no server: clients are built, one cycle runs
+// synchronously, and the caller exits. That one-shot path may block, which is fine.
 func (s *Server) Start() error {
 	cfg := s.cfg.Get()
 
 	s.initTracing(cfg)
 
-	if err := s.startCollection(context.Background(), cfg); err != nil {
-		return err
-	}
-
-	if err := s.initOTLP(cfg); err != nil {
-		log.Warnf("OTLP metrics export disabled: %v", err)
+	if once {
+		// One-shot: build clients and run a single synchronous cycle, no server.
+		return s.startCollection(context.Background(), cfg)
 	}
 
 	if err := s.registry.Register(powerstore.NewPromCollector(s.store)); err != nil {
@@ -109,10 +113,25 @@ func (s *Server) Start() error {
 		ReadHeaderTimeout: readHeaderTimeout,
 	}
 
+	// Start listening first: the empty-seeded store lets /health return
+	// 200 "starting" and /metrics serve (with no powerstore_up series yet).
 	go func() {
 		log.Infof("Starting %s on %s%s", programName, cfg.GetServerAddress(), cfg.Server.URI)
 		if err := s.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			s.serverErrChan <- fmt.Errorf("HTTP server error: %w", err)
+		}
+	}()
+
+	// Build clients, run the initial collection, wire OTLP, and start the loop
+	// in the background so client construction (which performs a login not bound
+	// by the collection timeout) never delays the server coming up.
+	go func() {
+		if err := s.startCollection(context.Background(), cfg); err != nil {
+			log.Errorf("Initial collection setup failed: %v", err)
+			return
+		}
+		if err := s.initOTLP(cfg); err != nil {
+			log.Warnf("OTLP metrics export disabled: %v", err)
 		}
 	}()
 
@@ -193,6 +212,17 @@ func (s *Server) initOTLP(cfg *models.Config) error {
 		return err
 	}
 	s.otlp = exp
+
+	// Metric names absent during the first cycle get no instruments at init, so
+	// refresh instruments after every collection cycle (EnsureInstruments is
+	// idempotent — it tracks an already-registered set).
+	s.mu.Lock()
+	collector := s.collector
+	s.mu.Unlock()
+	if collector != nil {
+		collector.SetOnCycle(func() { _ = exp.EnsureInstruments() })
+	}
+
 	log.Infof("OTLP metrics push enabled to %s", cfg.OpenTelemetry.Metrics.Endpoint)
 	return nil
 }
