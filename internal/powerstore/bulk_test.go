@@ -20,8 +20,12 @@ func makeGzTar(t *testing.T, files map[string]string) []byte {
 			t.Fatal(err)
 		}
 	}
-	tw.Close()
-	gz.Close()
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
 	return buf.Bytes()
 }
 

@@ -67,7 +67,7 @@ func (c *ArrayClient) bulkEnable(ctx context.Context, httpClient *http.Client, b
 	if err != nil {
 		return fmt.Errorf("array %q: bulk enable request: %w", c.name, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// 204 No Content is success; some firmware may return 200/201.
 	if resp.StatusCode == http.StatusNoContent ||
@@ -93,7 +93,7 @@ func (c *ArrayClient) bulkDownload(ctx context.Context, httpClient *http.Client,
 	if err != nil {
 		return nil, fmt.Errorf("array %q: bulk download request: %w", c.name, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
@@ -114,7 +114,7 @@ func parseBulkArchive(archive []byte) (map[string][]map[string]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gzip open: %w", err)
 	}
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 
 	out := make(map[string][]map[string]string)
 	tr := tar.NewReader(gz)
