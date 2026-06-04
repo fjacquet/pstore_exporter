@@ -40,7 +40,7 @@ var _ Client = (*ArrayClient)(nil)
 // NewArrayClient constructs an ArrayClient from an array configuration.
 func NewArrayClient(cfg models.ArrayConfig) (*ArrayClient, error) {
 	if cfg.InsecureSkipVerify {
-		logging.LogError(fmt.Sprintf("array %q: InsecureSkipVerify is enabled; TLS certificate verification is disabled", cfg.Name))
+		logging.LogWarn(fmt.Sprintf("array %q: InsecureSkipVerify is enabled; TLS certificate verification is disabled", cfg.Name))
 	}
 
 	opts := gopowerstore.NewClientOptions()
@@ -78,32 +78,32 @@ func (c *ArrayClient) GetTopology(ctx context.Context) (*Topology, error) {
 
 	volumes, err := c.gp.GetVolumes(ctx)
 	if err != nil {
-		logging.LogError(fmt.Sprintf("array %q: get volumes: %v", c.name, err))
+		logging.LogWarn(fmt.Sprintf("array %q: get volumes: %v", c.name, err))
 		volumes = nil
 	}
 	vgs, err := c.gp.GetVolumeGroups(ctx)
 	if err != nil {
-		logging.LogError(fmt.Sprintf("array %q: get volume groups: %v", c.name, err))
+		logging.LogWarn(fmt.Sprintf("array %q: get volume groups: %v", c.name, err))
 		vgs = nil
 	}
 	nas, err := c.gp.GetNASServers(ctx)
 	if err != nil {
-		logging.LogError(fmt.Sprintf("array %q: get NAS servers: %v", c.name, err))
+		logging.LogWarn(fmt.Sprintf("array %q: get NAS servers: %v", c.name, err))
 		nas = nil
 	}
 	fs, err := c.gp.ListFS(ctx)
 	if err != nil {
-		logging.LogError(fmt.Sprintf("array %q: list file systems: %v", c.name, err))
+		logging.LogWarn(fmt.Sprintf("array %q: list file systems: %v", c.name, err))
 		fs = nil
 	}
 	fc, err := c.gp.GetFCPorts(ctx)
 	if err != nil {
-		logging.LogError(fmt.Sprintf("array %q: get FC ports: %v", c.name, err))
+		logging.LogWarn(fmt.Sprintf("array %q: get FC ports: %v", c.name, err))
 		fc = nil
 	}
 	eth, err := c.gp.GetEthPorts(ctx)
 	if err != nil {
-		logging.LogError(fmt.Sprintf("array %q: get Ethernet ports: %v", c.name, err))
+		logging.LogWarn(fmt.Sprintf("array %q: get Ethernet ports: %v", c.name, err))
 		eth = nil
 	}
 
@@ -141,7 +141,7 @@ func (c *ArrayClient) enumerateAppliances(
 	for id := range seen {
 		a, err := c.gp.GetAppliance(ctx, id)
 		if err != nil {
-			logging.LogError(fmt.Sprintf("array %q: get appliance %q: %v", c.name, id, err))
+			logging.LogWarn(fmt.Sprintf("array %q: get appliance %q: %v", c.name, id, err))
 			continue
 		}
 		appliances = append(appliances, a)
@@ -158,7 +158,7 @@ func (c *ArrayClient) BulkCapable(ctx context.Context, _ *Topology) bool {
 	if c.softwareVersion == "" {
 		v, err := c.gp.GetSoftwareMajorMinorVersion(ctx)
 		if err != nil {
-			logging.LogError(fmt.Sprintf("array %q: detect software version: %v", c.name, err))
+			logging.LogWarn(fmt.Sprintf("array %q: detect software version: %v", c.name, err))
 			return false
 		}
 		// GetSoftwareMajorMinorVersion returns e.g. 4.1 as a float; render it

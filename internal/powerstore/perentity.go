@@ -15,12 +15,12 @@ func (c *ArrayClient) PerEntityMetrics(ctx context.Context, topo *Topology) ([]S
 
 	for _, a := range topo.Appliances {
 		if perf, err := c.gp.PerformanceMetricsByAppliance(ctx, a.ID, c.interval); err != nil {
-			logging.LogError(fmt.Sprintf("array %q: appliance %s perf failed: %v", c.name, a.ID, err))
+			logging.LogWarn(fmt.Sprintf("array %q: appliance %s perf failed: %v", c.name, a.ID, err))
 		} else {
 			samples = append(samples, deriveAppliancePerf(c.name, topo, perf)...)
 		}
 		if space, err := c.gp.SpaceMetricsByAppliance(ctx, a.ID, c.interval); err != nil {
-			logging.LogError(fmt.Sprintf("array %q: appliance %s space failed: %v", c.name, a.ID, err))
+			logging.LogWarn(fmt.Sprintf("array %q: appliance %s space failed: %v", c.name, a.ID, err))
 		} else {
 			samples = append(samples, deriveApplianceSpace(c.name, topo, space)...)
 		}
@@ -28,7 +28,7 @@ func (c *ArrayClient) PerEntityMetrics(ctx context.Context, topo *Topology) ([]S
 
 	for _, v := range topo.Volumes {
 		if perf, err := c.gp.PerformanceMetricsByVolume(ctx, v.ID, c.interval); err != nil {
-			logging.LogError(fmt.Sprintf("array %q: volume %s perf failed: %v", c.name, v.ID, err))
+			logging.LogWarn(fmt.Sprintf("array %q: volume %s perf failed: %v", c.name, v.ID, err))
 		} else {
 			samples = append(samples, deriveVolumePerf(c.name, topo, perf)...)
 		}

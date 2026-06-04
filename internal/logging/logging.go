@@ -19,6 +19,13 @@ func LogInfo(msg string) {
 	log.WithFields(log.Fields{"job": programName}).Info(msg)
 }
 
+// LogWarn logs a warning message tagged with the program name. It is used for
+// expected, recoverable conditions (graceful degradation) that should not be
+// reported at error severity.
+func LogWarn(msg string) {
+	log.WithFields(log.Fields{"job": programName}).Warn(msg)
+}
+
 // LogError logs a recoverable error message tagged with the program name.
 func LogError(msg string) {
 	log.WithFields(log.Fields{"job": programName}).Error(msg)
