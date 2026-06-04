@@ -15,12 +15,23 @@ import (
 const defaultTimeout = 60 * time.Second
 
 // ArrayClient is the per-array PowerStore API client. It wraps a gopowerstore
-// client and satisfies the Client interface.
+// client and satisfies the Client interface. The endpoint/credentials are also
+// retained so the bulk-CSV path can issue raw authenticated HTTP requests to the
+// latest_five_min_metrics endpoints, which return a gzipped tar (not JSON) and so
+// cannot go through the typed, JSON-decoding gopowerstore client.
 type ArrayClient struct {
 	name            string
 	interval        gopowerstore.MetricsIntervalEnum
 	softwareVersion string // cached PowerStoreOS version; "" until detected
 	gp              gopowerstore.Client
+
+	endpoint string // configured API endpoint, e.g. https://10.0.0.1/api/rest
+	username string
+	password string
+	// insecure mirrors cfg.InsecureSkipVerify. PowerStore arrays commonly use
+	// self-signed certificates, so disabling verification is an operator-chosen,
+	// per-array setting (logged on startup) rather than a hardcoded default.
+	insecure bool
 }
 
 // Compile-time assertion that ArrayClient satisfies Client.
@@ -45,6 +56,10 @@ func NewArrayClient(cfg models.ArrayConfig) (*ArrayClient, error) {
 		name:     cfg.Name,
 		interval: gopowerstore.MetricsIntervalEnum(cfg.MetricsInterval()),
 		gp:       gp,
+		endpoint: cfg.Endpoint,
+		username: cfg.Username,
+		password: cfg.Password,
+		insecure: cfg.InsecureSkipVerify,
 	}, nil
 }
 
@@ -153,11 +168,24 @@ func (c *ArrayClient) BulkCapable(ctx context.Context, _ *Topology) bool {
 	return bulkCapableFromVersion(c.softwareVersion)
 }
 
-// BulkMetrics collects metrics via the bulk CSV API.
-//
-// TODO(task-15): replaced by the real implementation in bulk.go.
+// BulkMetrics enables the bulk five-minute metrics export, downloads the gzipped
+// tar of CSVs via a raw authenticated HTTP client, parses it, and derives samples
+// with metric names and label keys identical to the per-entity path. Any failure
+// returns an error so the collector falls back to the per-entity path.
 func (c *ArrayClient) BulkMetrics(ctx context.Context, topo *Topology) ([]Sample, error) {
-	return nil, nil
+	archive, err := c.downloadBulkArchive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	files, err := parseBulkArchive(archive)
+	if err != nil {
+		return nil, err
+	}
+	var samples []Sample
+	samples = append(samples, deriveBulkAppliancePerf(c.name, topo, files["performance_metrics_by_appliance.csv"])...)
+	samples = append(samples, deriveBulkApplianceSpace(c.name, topo, files["space_metrics_by_appliance.csv"])...)
+	samples = append(samples, deriveBulkVolumePerf(c.name, topo, files["performance_metrics_by_volume.csv"])...)
+	return samples, nil
 }
 
 // Close releases client resources. gopowerstore has no explicit close, so this
