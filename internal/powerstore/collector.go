@@ -19,6 +19,8 @@ type Collector struct {
 	interval time.Duration
 	timeout  time.Duration
 	tracing  *TracerWrapper
+
+	onCycle func() // optional post-cycle hook, run after each store publish
 }
 
 // SetClients atomically replaces the client set, used on config hot reload when the
@@ -27,6 +29,25 @@ func (c *Collector) SetClients(clients []Client) {
 	c.mu.Lock()
 	c.clients = clients
 	c.mu.Unlock()
+}
+
+// SetOnCycle registers a hook invoked after each collection cycle publishes its
+// snapshot. Used to refresh OTLP instruments for metric names that first appear
+// after startup. Nil-safe: if no hook is set, nothing is called.
+func (c *Collector) SetOnCycle(fn func()) {
+	c.mu.Lock()
+	c.onCycle = fn
+	c.mu.Unlock()
+}
+
+// runOnCycle invokes the post-cycle hook if one is set.
+func (c *Collector) runOnCycle() {
+	c.mu.RLock()
+	fn := c.onCycle
+	c.mu.RUnlock()
+	if fn != nil {
+		fn()
+	}
 }
 
 // NewCollector creates a collection loop over the given per-array clients.
@@ -44,6 +65,7 @@ func NewCollector(clients []Client, store *SnapshotStore, interval, timeout time
 func (c *Collector) CollectOnce(ctx context.Context) *Snapshot {
 	snap := c.collectAll(ctx)
 	c.store.Store(snap)
+	c.runOnCycle()
 	return snap
 }
 
@@ -57,6 +79,7 @@ func (c *Collector) Run(ctx context.Context) {
 			return
 		case <-ticker.C:
 			c.store.Store(c.collectAll(ctx))
+			c.runOnCycle()
 		}
 	}
 }
