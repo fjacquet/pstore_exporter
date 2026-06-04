@@ -1,0 +1,159 @@
+{
+  "title": "PowerStore — File Systems",
+  "uid": "pstore-file-systems",
+  "tags": ["powerstore", "pstore_exporter", "file", "nas"],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "array",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_up, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "File System Size — Total vs Used",
+      "type": "timeseries",
+      "description": "Total and used bytes per file system, annotated by NAS server.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (file_system_name, nas_server_name) (powerstore_file_system_size_total_bytes{array=~\"$array\"})",
+          "legendFormat": "{{nas_server_name}} / {{file_system_name}} total"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (file_system_name, nas_server_name) (powerstore_file_system_size_used_bytes{array=~\"$array\"})",
+          "legendFormat": "{{nas_server_name}} / {{file_system_name}} used"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "File System Used %",
+      "type": "timeseries",
+      "description": "Percentage of used capacity per file system.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red",    "value": 85 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (file_system_name, nas_server_name) (powerstore_file_system_size_used_bytes{array=~\"$array\"}) / sum by (file_system_name, nas_server_name) (powerstore_file_system_size_total_bytes{array=~\"$array\"})",
+          "legendFormat": "{{nas_server_name}} / {{file_system_name}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "File System Capacity Summary",
+      "type": "table",
+      "description": "Snapshot of total, used, and used % for each file system, grouped by NAS server.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 20 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Used %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green",  "value": null },
+                    { "color": "yellow", "value": 70 },
+                    { "color": "red",    "value": 85 }
+                  ]
+                }
+              },
+              { "id": "custom.displayMode", "value": "color-background" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [{ "displayName": "NAS Server" }, { "displayName": "File System" }]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (file_system_name, nas_server_name, array) (powerstore_file_system_size_total_bytes{array=~\"$array\"})",
+          "legendFormat": "Total",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (file_system_name, nas_server_name, array) (powerstore_file_system_size_used_bytes{array=~\"$array\"})",
+          "legendFormat": "Used",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "expr": "100 * sum by (file_system_name, nas_server_name, array) (powerstore_file_system_size_used_bytes{array=~\"$array\"}) / sum by (file_system_name, nas_server_name, array) (powerstore_file_system_size_total_bytes{array=~\"$array\"})",
+          "legendFormat": "Used %",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "organize", "options": {
+            "renameByName": {
+              "file_system_name": "File System",
+              "nas_server_name": "NAS Server",
+              "array": "Array",
+              "Value #A": "Total",
+              "Value #B": "Used",
+              "Value #C": "Used %"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

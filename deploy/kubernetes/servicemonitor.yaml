@@ -1,0 +1,15 @@
+# Optional: requires the Prometheus Operator (monitoring.coreos.com CRDs).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pstore-exporter
+  labels:
+    app.kubernetes.io/name: pstore-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pstore-exporter
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s

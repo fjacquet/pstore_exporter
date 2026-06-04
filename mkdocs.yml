@@ -1,0 +1,69 @@
+site_name: PowerStore Exporter
+site_description: Prometheus + OTLP exporter for Dell PowerStore arrays
+site_url: https://fjacquet.github.io/pstore_exporter/
+repo_url: https://github.com/fjacquet/pstore_exporter
+repo_name: fjacquet/pstore_exporter
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Configuration: getting-started/configuration.md
+      - Quick Start: getting-started/quickstart.md
+  - Metrics Reference: metrics.md
+  - Collection Paths: collection-paths.md
+  - Alerting: alerting.md
+  - Deployment:
+      - Docker: deployment/docker.md
+      - systemd: deployment/systemd.md
+      - Kubernetes: deployment/kubernetes.md
+  - Dashboards: dashboards.md
+  - OpenTelemetry: opentelemetry.md
+  - CI/CD & SBOM: cicd.md
+  - Project:
+      - Changelog: changelog.md
+      - Contributing: contributing.md
+      - Security: security.md
+  - Architecture Decisions:
+      - Index: adr/README.md
+      - "0001: Record Architecture Decisions": adr/0001-record-architecture-decisions.md
+      - "0002: Snapshot Collection Model": adr/0002-snapshot-collection-model.md
+      - "0003: Use gopowerstore Client": adr/0003-use-gopowerstore-client.md
+      - "0004: Dual Metrics Paths": adr/0004-dual-metrics-paths-auto-detection.md
+      - "0005: Multi-Array and Array Label": adr/0005-multi-array-and-array-label.md
+      - "0006: Metric Naming and Units": adr/0006-metric-naming-and-units.md
+      - "0007: Serve HTTP Before First Collection": adr/0007-serve-http-before-first-collection.md
