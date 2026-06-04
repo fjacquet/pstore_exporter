@@ -1,0 +1,135 @@
+{
+  "title": "PowerStore — Appliances",
+  "uid": "pstore-appliances",
+  "tags": ["powerstore", "pstore_exporter", "block", "appliance"],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "array",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_up, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "IOPS per Appliance",
+      "type": "timeseries",
+      "description": "Total IOPS broken down by appliance_name.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "iops" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (appliance_name) (powerstore_appliance_total_iops{array=~\"$array\"})",
+          "legendFormat": "{{appliance_name}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Read Bandwidth per Appliance",
+      "type": "timeseries",
+      "description": "Read bandwidth in bytes/s per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (appliance_name) (powerstore_appliance_read_bandwidth_bytes_per_second{array=~\"$array\"})",
+          "legendFormat": "{{appliance_name}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Write Bandwidth per Appliance",
+      "type": "timeseries",
+      "description": "Write bandwidth in bytes/s per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (appliance_name) (powerstore_appliance_write_bandwidth_bytes_per_second{array=~\"$array\"})",
+          "legendFormat": "{{appliance_name}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Read Latency per Appliance (µs)",
+      "type": "timeseries",
+      "description": "Average read latency in microseconds per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "µs" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (appliance_name) (powerstore_appliance_read_latency_microseconds{array=~\"$array\"})",
+          "legendFormat": "{{appliance_name}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Write Latency per Appliance (µs)",
+      "type": "timeseries",
+      "description": "Average write latency in microseconds per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "µs" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (appliance_name) (powerstore_appliance_write_latency_microseconds{array=~\"$array\"})",
+          "legendFormat": "{{appliance_name}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "IO Workload CPU Utilization per Appliance",
+      "type": "timeseries",
+      "description": "CPU utilization (%) used for IO workload per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "powerstore_appliance_io_workload_cpu_utilization{array=~\"$array\"}",
+          "legendFormat": "{{appliance_name}}"
+        }
+      ]
+    }
+  ]
+}

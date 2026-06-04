@@ -1,0 +1,14 @@
+# Grafana dashboard provisioning for the docker-compose test stack.
+# Loads the bundled PowerStore dashboards from disk; the block/ and file/
+# subdirectories become Grafana folders (foldersFromFilesStructure).
+apiVersion: 1
+
+providers:
+  - name: PowerStore
+    type: file
+    disableDeletion: false
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true
