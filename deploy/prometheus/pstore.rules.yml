@@ -1,0 +1,41 @@
+# Alert rules for pstore_exporter. Expressions use metrics emitted by the exporter.
+groups:
+  - name: pstore-health
+    rules:
+      - alert: PowerStoreArrayDown
+        expr: powerstore_up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PowerStore array is unreachable ({{ $labels.array }})"
+          description: "powerstore_up is 0 for array {{ $labels.array }} for over 5 minutes — scrape or API connection failed."
+
+      - alert: PowerStoreScrapeStale
+        expr: time() - powerstore_last_scrape_timestamp_seconds > 300
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PowerStore scrape data is stale ({{ $labels.array }})"
+          description: "Last successful scrape for array {{ $labels.array }} was more than 5 minutes ago."
+
+      - alert: PowerStorePortDown
+        expr: powerstore_port_link_up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PowerStore port link is down ({{ $labels.array }}/{{ $labels.name }})"
+          description: "Port {{ $labels.name }} on array {{ $labels.array }} has been link-down for over 5 minutes."
+
+  - name: pstore-capacity
+    rules:
+      - alert: PowerStoreHighCapacity
+        expr: 100 * powerstore_appliance_physical_used_bytes / powerstore_appliance_physical_total_bytes > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PowerStore appliance capacity above 85% ({{ $labels.array }}/{{ $labels.name }})"
+          description: "Appliance {{ $labels.name }} on array {{ $labels.array }} is {{ $value | printf \"%.1f\" }}% physically used."
