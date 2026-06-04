@@ -9,30 +9,15 @@ func deref(p *int64) float64 {
 	return float64(*p)
 }
 
-func applianceServiceTag(topo *Topology, id string) string {
-	for _, a := range topo.Appliances {
-		if a.ID == id {
-			return a.ServiceTag
-		}
-	}
-	return ""
-}
-
 // deriveVolumePerf maps the newest performance sample per volume to []Sample.
 func deriveVolumePerf(array string, topo *Topology, resp []gopowerstore.PerformanceMetricsByVolumeResponse) []Sample {
 	clusterID := topo.ClusterID()
-	latest := make(map[string]gopowerstore.PerformanceMetricsByVolumeResponse)
-	for _, r := range resp {
-		latest[r.VolumeID] = r // time-ordered ascending; last wins
-	}
+	latest := latestByID(resp, func(r gopowerstore.PerformanceMetricsByVolumeResponse) string { return r.VolumeID })
 	var out []Sample
 	for volID, r := range latest {
-		volName, applID := volID, ""
-		for _, v := range topo.Volumes {
-			if v.ID == volID {
-				volName, applID = v.Name, v.ApplianceID
-				break
-			}
+		volName, applID := topo.VolumeInfo(volID)
+		if volName == "" {
+			volName = volID
 		}
 		vgID, vgName := topo.VolumeGroupOf(volID)
 		labels := volumeLabels(array, clusterID, volName, volID, applID, topo.ApplianceName(applID), vgName, vgID)
@@ -53,13 +38,10 @@ func deriveVolumePerf(array string, topo *Topology, resp []gopowerstore.Performa
 // deriveAppliancePerf maps the newest performance sample per appliance to []Sample.
 func deriveAppliancePerf(array string, topo *Topology, resp []gopowerstore.PerformanceMetricsByApplianceResponse) []Sample {
 	clusterID := topo.ClusterID()
-	latest := make(map[string]gopowerstore.PerformanceMetricsByApplianceResponse)
-	for _, r := range resp {
-		latest[r.ApplianceID] = r
-	}
+	latest := latestByID(resp, func(r gopowerstore.PerformanceMetricsByApplianceResponse) string { return r.ApplianceID })
 	var out []Sample
 	for applID, r := range latest {
-		labels := applianceLabels(array, clusterID, topo.ApplianceName(applID), applID, applianceServiceTag(topo, applID))
+		labels := applianceLabels(array, clusterID, topo.ApplianceName(applID), applID, topo.ApplianceServiceTag(applID))
 		out = append(out,
 			Sample{"powerstore_appliance_read_iops", labels, float64(r.ReadIops)},
 			Sample{"powerstore_appliance_write_iops", labels, float64(r.WriteIops)},
@@ -77,13 +59,10 @@ func deriveAppliancePerf(array string, topo *Topology, resp []gopowerstore.Perfo
 // deriveApplianceSpace maps the newest space sample per appliance to []Sample.
 func deriveApplianceSpace(array string, topo *Topology, resp []gopowerstore.SpaceMetricsByApplianceResponse) []Sample {
 	clusterID := topo.ClusterID()
-	latest := make(map[string]gopowerstore.SpaceMetricsByApplianceResponse)
-	for _, r := range resp {
-		latest[r.ApplianceID] = r
-	}
+	latest := latestByID(resp, func(r gopowerstore.SpaceMetricsByApplianceResponse) string { return r.ApplianceID })
 	var out []Sample
 	for applID, r := range latest {
-		labels := applianceLabels(array, clusterID, topo.ApplianceName(applID), applID, applianceServiceTag(topo, applID))
+		labels := applianceLabels(array, clusterID, topo.ApplianceName(applID), applID, topo.ApplianceServiceTag(applID))
 		out = append(out,
 			Sample{"powerstore_appliance_physical_total_bytes", labels, deref(r.PhysicalTotal)},
 			Sample{"powerstore_appliance_physical_used_bytes", labels, deref(r.PhysicalUsed)},
@@ -126,9 +105,12 @@ func derivePortLinkStatus(array string, topo *Topology) []Sample {
 	return out
 }
 
-func b2f(b bool) float64 {
-	if b {
-		return 1
+// latestByID deduplicates a slice of items by string key, keeping the last entry
+// per key (caller guarantees time-ordered ascending so last-wins is newest).
+func latestByID[V any](items []V, key func(V) string) map[string]V {
+	m := make(map[string]V, len(items))
+	for _, it := range items {
+		m[key(it)] = it
 	}
-	return 0
+	return m
 }

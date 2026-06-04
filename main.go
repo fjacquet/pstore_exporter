@@ -320,31 +320,28 @@ func (s *Server) Shutdown() error {
 		}
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
 	if s.httpSrv != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		log.Info("Shutting down HTTP server...")
 		if err := s.httpSrv.Shutdown(ctx); err != nil {
 			log.Warnf("HTTP server shutdown warning: %v", err)
 		}
-		cancel()
 	}
 
 	s.stopCollection()
 
 	if s.otlp != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		if err := s.otlp.Shutdown(ctx); err != nil {
 			log.Warnf("OTLP shutdown warning: %v", err)
 		}
-		cancel()
 	}
 
 	if s.telemetry != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		if err := s.telemetry.Shutdown(ctx); err != nil {
 			log.Warnf("Telemetry shutdown warning: %v", err)
 		}
-		cancel()
 	}
 
 	close(s.serverErrChan)

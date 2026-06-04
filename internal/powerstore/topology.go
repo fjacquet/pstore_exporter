@@ -15,10 +15,13 @@ type Topology struct {
 	FCPorts      []gopowerstore.FcPort
 	EthPorts     []gopowerstore.EthPort
 
-	applianceName map[string]string
-	vgName        map[string]string
-	volumeVGID    map[string]string
-	nasName       map[string]string
+	applianceName       map[string]string
+	applianceServiceTag map[string]string
+	vgName              map[string]string
+	volumeVGID          map[string]string
+	volumeName          map[string]string
+	volumeApplianceID   map[string]string
+	nasName             map[string]string
 }
 
 // NewTopology builds a Topology and its lookup indices from the inventory slices
@@ -43,13 +46,21 @@ func NewTopology(
 		FCPorts:      fc,
 		EthPorts:     eth,
 
-		applianceName: make(map[string]string),
-		vgName:        make(map[string]string),
-		volumeVGID:    make(map[string]string),
-		nasName:       make(map[string]string),
+		applianceName:       make(map[string]string),
+		applianceServiceTag: make(map[string]string),
+		vgName:              make(map[string]string),
+		volumeVGID:          make(map[string]string),
+		volumeName:          make(map[string]string),
+		volumeApplianceID:   make(map[string]string),
+		nasName:             make(map[string]string),
 	}
 	for _, a := range appliances {
 		t.applianceName[a.ID] = a.Name
+		t.applianceServiceTag[a.ID] = a.ServiceTag
+	}
+	for _, v := range volumes {
+		t.volumeName[v.ID] = v.Name
+		t.volumeApplianceID[v.ID] = v.ApplianceID
 	}
 	for _, g := range vgs {
 		t.vgName[g.ID] = g.Name
@@ -92,3 +103,11 @@ func (t *Topology) VolumeGroupOf(volID string) (string, string) {
 
 // NASName resolves a NAS server id to its name (empty if unknown).
 func (t *Topology) NASName(id string) string { return t.nasName[id] }
+
+// ApplianceServiceTag resolves an appliance id to its service tag (empty if unknown).
+func (t *Topology) ApplianceServiceTag(id string) string { return t.applianceServiceTag[id] }
+
+// VolumeInfo returns the name and appliance ID for a volume id (both empty if unknown).
+func (t *Topology) VolumeInfo(id string) (name, applianceID string) {
+	return t.volumeName[id], t.volumeApplianceID[id]
+}

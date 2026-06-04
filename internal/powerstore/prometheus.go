@@ -49,20 +49,12 @@ func (c *PromCollector) Collect(ch chan<- prometheus.Metric) {
 	snap := c.store.Load()
 
 	for name, as := range snap.PerArray {
-		up := 0.0
-		if as.Up {
-			up = 1.0
-		}
-		ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, up, name)
+		ch <- prometheus.MustNewConstMetric(c.up, prometheus.GaugeValue, b2f(as.Up), name)
 
 		if as.Up && !as.LastScrape.IsZero() {
 			ch <- prometheus.MustNewConstMetric(c.lastScrape, prometheus.GaugeValue, float64(as.LastScrape.Unix()), name)
 		}
-		bulk := 0.0
-		if as.BulkCapable {
-			bulk = 1.0
-		}
-		ch <- prometheus.MustNewConstMetric(c.bulkAPI, prometheus.GaugeValue, bulk, name)
+		ch <- prometheus.MustNewConstMetric(c.bulkAPI, prometheus.GaugeValue, b2f(as.BulkCapable), name)
 	}
 
 	for _, name := range snap.MetricNames() {

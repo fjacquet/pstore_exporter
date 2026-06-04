@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 )
@@ -133,7 +134,7 @@ func parseBulkArchive(archive []byte) (map[string][]map[string]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("csv %s: %w", hdr.Name, err)
 		}
-		out[baseName(hdr.Name)] = rows
+		out[path.Base(hdr.Name)] = rows
 	}
 	return out, nil
 }
@@ -160,13 +161,4 @@ func parseCSV(r io.Reader) ([]map[string]string, error) {
 		rows = append(rows, row)
 	}
 	return rows, nil
-}
-
-func baseName(p string) string {
-	for i := len(p) - 1; i >= 0; i-- {
-		if p[i] == '/' {
-			return p[i+1:]
-		}
-	}
-	return p
 }

@@ -31,12 +31,12 @@ func deriveBulkVolumePerf(array string, topo *Topology, rows []map[string]string
 	var out []Sample
 	for _, r := range rows {
 		volID := r["volume_id"]
-		volName, applID := volID, r["appliance_id"]
-		for _, v := range topo.Volumes {
-			if v.ID == volID {
-				volName, applID = v.Name, v.ApplianceID
-				break
-			}
+		volName, applID := topo.VolumeInfo(volID)
+		if volName == "" {
+			volName = volID
+		}
+		if applID == "" {
+			applID = r["appliance_id"]
 		}
 		vgID, vgName := topo.VolumeGroupOf(volID)
 		labels := volumeLabels(array, clusterID, volName, volID, applID, topo.ApplianceName(applID), vgName, vgID)
@@ -61,7 +61,7 @@ func deriveBulkAppliancePerf(array string, topo *Topology, rows []map[string]str
 	var out []Sample
 	for _, r := range rows {
 		applID := r["appliance_id"]
-		labels := applianceLabels(array, clusterID, topo.ApplianceName(applID), applID, applianceServiceTag(topo, applID))
+		labels := applianceLabels(array, clusterID, topo.ApplianceName(applID), applID, topo.ApplianceServiceTag(applID))
 		out = append(out,
 			Sample{"powerstore_appliance_read_iops", labels, csvFloat(r, "avg_read_iops", "read_iops")},
 			Sample{"powerstore_appliance_write_iops", labels, csvFloat(r, "avg_write_iops", "write_iops")},
@@ -83,7 +83,7 @@ func deriveBulkApplianceSpace(array string, topo *Topology, rows []map[string]st
 	var out []Sample
 	for _, r := range rows {
 		applID := r["appliance_id"]
-		labels := applianceLabels(array, clusterID, topo.ApplianceName(applID), applID, applianceServiceTag(topo, applID))
+		labels := applianceLabels(array, clusterID, topo.ApplianceName(applID), applID, topo.ApplianceServiceTag(applID))
 		out = append(out,
 			Sample{"powerstore_appliance_physical_total_bytes", labels, csvFloat(r, "physical_total", "last_physical_total")},
 			Sample{"powerstore_appliance_physical_used_bytes", labels, csvFloat(r, "physical_used", "last_physical_used")},

@@ -3,9 +3,11 @@ package powerstore
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/dell/gopowerstore"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/fjacquet/pstore_exporter/internal/logging"
 	"github.com/fjacquet/pstore_exporter/internal/models"
@@ -76,36 +78,72 @@ func (c *ArrayClient) GetTopology(ctx context.Context) (*Topology, error) {
 		return nil, fmt.Errorf("array %q: get cluster: %w", c.name, err)
 	}
 
-	volumes, err := c.gp.GetVolumes(ctx)
-	if err != nil {
-		logging.LogWarn(fmt.Sprintf("array %q: get volumes: %v", c.name, err))
-		volumes = nil
-	}
-	vgs, err := c.gp.GetVolumeGroups(ctx)
-	if err != nil {
-		logging.LogWarn(fmt.Sprintf("array %q: get volume groups: %v", c.name, err))
-		vgs = nil
-	}
-	nas, err := c.gp.GetNASServers(ctx)
-	if err != nil {
-		logging.LogWarn(fmt.Sprintf("array %q: get NAS servers: %v", c.name, err))
-		nas = nil
-	}
-	fs, err := c.gp.ListFS(ctx)
-	if err != nil {
-		logging.LogWarn(fmt.Sprintf("array %q: list file systems: %v", c.name, err))
-		fs = nil
-	}
-	fc, err := c.gp.GetFCPorts(ctx)
-	if err != nil {
-		logging.LogWarn(fmt.Sprintf("array %q: get FC ports: %v", c.name, err))
-		fc = nil
-	}
-	eth, err := c.gp.GetEthPorts(ctx)
-	if err != nil {
-		logging.LogWarn(fmt.Sprintf("array %q: get Ethernet ports: %v", c.name, err))
-		eth = nil
-	}
+	var (
+		volumes []gopowerstore.Volume
+		vgs     []gopowerstore.VolumeGroup
+		nas     []gopowerstore.NAS
+		fs      []gopowerstore.FileSystem
+		fc      []gopowerstore.FcPort
+		eth     []gopowerstore.EthPort
+	)
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		v, err := c.gp.GetVolumes(gctx)
+		if err != nil {
+			logging.LogWarn(fmt.Sprintf("array %q: get volumes: %v", c.name, err))
+			return nil
+		}
+		volumes = v
+		return nil
+	})
+	g.Go(func() error {
+		v, err := c.gp.GetVolumeGroups(gctx)
+		if err != nil {
+			logging.LogWarn(fmt.Sprintf("array %q: get volume groups: %v", c.name, err))
+			return nil
+		}
+		vgs = v
+		return nil
+	})
+	g.Go(func() error {
+		v, err := c.gp.GetNASServers(gctx)
+		if err != nil {
+			logging.LogWarn(fmt.Sprintf("array %q: get NAS servers: %v", c.name, err))
+			return nil
+		}
+		nas = v
+		return nil
+	})
+	g.Go(func() error {
+		v, err := c.gp.ListFS(gctx)
+		if err != nil {
+			logging.LogWarn(fmt.Sprintf("array %q: list file systems: %v", c.name, err))
+			return nil
+		}
+		fs = v
+		return nil
+	})
+	g.Go(func() error {
+		v, err := c.gp.GetFCPorts(gctx)
+		if err != nil {
+			logging.LogWarn(fmt.Sprintf("array %q: get FC ports: %v", c.name, err))
+			return nil
+		}
+		fc = v
+		return nil
+	})
+	g.Go(func() error {
+		v, err := c.gp.GetEthPorts(gctx)
+		if err != nil {
+			logging.LogWarn(fmt.Sprintf("array %q: get Ethernet ports: %v", c.name, err))
+			return nil
+		}
+		eth = v
+		return nil
+	})
+	// errgroup always returns nil here because each goroutine swallows errors.
+	_ = g.Wait()
 
 	appliances := c.enumerateAppliances(ctx, volumes, fc, eth)
 
@@ -137,14 +175,35 @@ func (c *ArrayClient) enumerateAppliances(
 		addID(eth[i].ApplianceID)
 	}
 
-	appliances := make([]gopowerstore.ApplianceInstance, 0, len(seen))
+	ids := make([]string, 0, len(seen))
 	for id := range seen {
-		a, err := c.gp.GetAppliance(ctx, id)
-		if err != nil {
-			logging.LogWarn(fmt.Sprintf("array %q: get appliance %q: %v", c.name, id, err))
-			continue
+		ids = append(ids, id)
+	}
+
+	results := make([]gopowerstore.ApplianceInstance, len(ids))
+	var mu sync.Mutex
+	g2, gctx2 := errgroup.WithContext(ctx)
+	for i, id := range ids {
+		i, id := i, id // capture loop variables
+		g2.Go(func() error {
+			a, err := c.gp.GetAppliance(gctx2, id)
+			if err != nil {
+				logging.LogWarn(fmt.Sprintf("array %q: get appliance %q: %v", c.name, id, err))
+				return nil
+			}
+			mu.Lock()
+			results[i] = a
+			mu.Unlock()
+			return nil
+		})
+	}
+	_ = g2.Wait()
+
+	appliances := make([]gopowerstore.ApplianceInstance, 0, len(ids))
+	for _, a := range results {
+		if a.ID != "" {
+			appliances = append(appliances, a)
 		}
-		appliances = append(appliances, a)
 	}
 	return appliances
 }

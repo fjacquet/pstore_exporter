@@ -64,3 +64,11 @@ func portLabels(arrayName, clusterID, portName, portID, kind, applID string) []L
 		Label{"appliance_id", applID},
 	)
 }
+
+// b2f converts a bool to a float64 metric value (1 for true, 0 for false).
+func b2f(b bool) float64 {
+	if b {
+		return 1
+	}
+	return 0
+}
