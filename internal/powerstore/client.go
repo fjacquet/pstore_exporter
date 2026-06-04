@@ -185,6 +185,10 @@ func (c *ArrayClient) BulkMetrics(ctx context.Context, topo *Topology) ([]Sample
 	samples = append(samples, deriveBulkAppliancePerf(c.name, topo, files["performance_metrics_by_appliance.csv"])...)
 	samples = append(samples, deriveBulkApplianceSpace(c.name, topo, files["space_metrics_by_appliance.csv"])...)
 	samples = append(samples, deriveBulkVolumePerf(c.name, topo, files["performance_metrics_by_volume.csv"])...)
+	// File-system capacity and port link status are inventory-derived (no API
+	// call), so emit them on the bulk path too for parity with per-entity.
+	samples = append(samples, deriveFileSystemCapacity(c.name, topo)...)
+	samples = append(samples, derivePortLinkStatus(c.name, topo)...)
 	return samples, nil
 }
 
