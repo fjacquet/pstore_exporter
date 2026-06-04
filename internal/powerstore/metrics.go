@@ -39,11 +39,11 @@ func volumeLabels(arrayName, clusterID, volName, volID, applID, applName, vgName
 }
 
 // applianceLabels builds the canonical Appliance label set.
-func applianceLabels(arrayName, clusterID, applName, applID, model string) []Label {
+func applianceLabels(arrayName, clusterID, applName, applID, serviceTag string) []Label {
 	return append(baseLabels(arrayName, clusterID),
 		Label{"appliance_name", applName},
 		Label{"appliance_id", applID},
-		Label{"model", model},
+		Label{"service_tag", serviceTag},
 	)
 }
 
