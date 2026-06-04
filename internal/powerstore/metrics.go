@@ -2,8 +2,6 @@
 // dual (Prometheus + OTLP) export paths.
 package powerstore
 
-import "strings"
-
 // Label is a single metric label name-value pair.
 type Label struct {
 	Name  string
@@ -47,27 +45,11 @@ func applianceLabels(arrayName, clusterID, applName, applID, serviceTag string) 
 	)
 }
 
-// volumeGroupLabels builds the canonical VolumeGroup label set.
-func volumeGroupLabels(arrayName, clusterID, vgName, vgID string) []Label {
-	return append(baseLabels(arrayName, clusterID),
-		Label{"volume_group_name", vgName},
-		Label{"volume_group_id", vgID},
-	)
-}
-
 // fileSystemLabels builds the canonical FileSystem label set.
 func fileSystemLabels(arrayName, clusterID, fsName, fsID, nasName, nasID string) []Label {
 	return append(baseLabels(arrayName, clusterID),
 		Label{"file_system_name", fsName},
 		Label{"file_system_id", fsID},
-		Label{"nas_server_name", nasName},
-		Label{"nas_server_id", nasID},
-	)
-}
-
-// nasLabels builds the canonical NAS server label set.
-func nasLabels(arrayName, clusterID, nasName, nasID string) []Label {
-	return append(baseLabels(arrayName, clusterID),
 		Label{"nas_server_name", nasName},
 		Label{"nas_server_id", nasID},
 	)
@@ -81,28 +63,4 @@ func portLabels(arrayName, clusterID, portName, portID, kind, applID string) []L
 		Label{"port_type", kind},
 		Label{"appliance_id", applID},
 	)
-}
-
-// driveLabels builds the canonical drive label set.
-func driveLabels(arrayName, clusterID, driveID, applID string) []Label {
-	return append(baseLabels(arrayName, clusterID),
-		Label{"drive_id", driveID},
-		Label{"appliance_id", applID},
-	)
-}
-
-// toSnake converts camelCase to snake_case for metric name fragments.
-func toSnake(s string) string {
-	var b strings.Builder
-	for i, r := range s {
-		if r >= 'A' && r <= 'Z' {
-			if i > 0 {
-				b.WriteByte('_')
-			}
-			b.WriteRune(r - 'A' + 'a')
-		} else {
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
 }
