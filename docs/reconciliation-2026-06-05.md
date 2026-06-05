@@ -120,7 +120,12 @@ add only when a concrete dashboard needs them.
 3. ~~**File-system performance** (`PerformanceMetricsByFileSystem`)~~ — **DONE.** Live per-FS
    IOPS/bandwidth/latency via `derive_filesystem_perf.go` + `ArrayClient.fileSystemPerf`,
    parallel to volume metrics. Closes defect **D1** (the stale "method unavailable" claim).
-4. **Volume-group performance** + **capacity (cluster/volume space)**.
+4. ~~**Volume-group performance** + **capacity (cluster space)**~~ — **DONE.**
+   `powerstore_volume_group_*` via `PerformanceMetricsByVg` (`derive_volumegroup_perf.go`)
+   and `powerstore_cluster_*` via `SpaceMetricsByCluster` (`derive_cluster_space.go`).
+   Per-volume space (`SpaceMetricsByVolume`) deferred to P3 — it doubles per-volume calls and
+   cluster-level forecasting covers the common case first. `GetCapacity` skipped in favour of
+   `SpaceMetricsByCluster.PhysicalTotal`, which has clearer semantics.
 5. Drive wear (needs drive enumeration); P3 protocol/node detail last.
 
 Each step: add the derive function (mirroring `derive_perentity.go`), reuse shared label

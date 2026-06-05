@@ -330,6 +330,52 @@ func (c *ArrayClient) fileSystemPerf(ctx context.Context, topo *Topology) []Samp
 	return samples
 }
 
+// volumeGroupPerf collects live per-volume-group performance via the typed
+// PerformanceMetricsByVg method, one call per volume group, failures logged and
+// skipped. Called from both export paths for parity.
+func (c *ArrayClient) volumeGroupPerf(ctx context.Context, topo *Topology) []Sample {
+	if len(topo.VolumeGroups) == 0 {
+		return nil
+	}
+	perVG := make([][]Sample, len(topo.VolumeGroups))
+	var mu sync.Mutex
+	g, gctx := errgroup.WithContext(ctx)
+	for i, vg := range topo.VolumeGroups {
+		i, vg := i, vg
+		g.Go(func() error {
+			resp, err := c.gp.PerformanceMetricsByVg(gctx, vg.ID, c.interval)
+			if err != nil {
+				logging.LogWarn(fmt.Sprintf("array %q: volume group %s perf failed: %v", c.name, vg.ID, err))
+				return nil
+			}
+			s := deriveVolumeGroupPerf(c.name, topo, vg, resp)
+			mu.Lock()
+			perVG[i] = s
+			mu.Unlock()
+			return nil
+		})
+	}
+	_ = g.Wait()
+
+	var samples []Sample
+	for _, s := range perVG {
+		samples = append(samples, s...)
+	}
+	return samples
+}
+
+// clusterSpace collects cluster-wide space metrics via the typed
+// SpaceMetricsByCluster method (one call). Used for capacity forecasting. Called
+// from both export paths for parity. A failure is logged and yields no samples.
+func (c *ArrayClient) clusterSpace(ctx context.Context, topo *Topology) []Sample {
+	resp, err := c.gp.SpaceMetricsByCluster(ctx, topo.ClusterID(), c.interval)
+	if err != nil {
+		logging.LogWarn(fmt.Sprintf("array %q: cluster space failed: %v", c.name, err))
+		return nil
+	}
+	return deriveClusterSpace(c.name, topo, resp)
+}
+
 // BulkCapable reports whether the array supports the bulk CSV metrics API
 // (introduced in PowerStoreOS 4.1). The version is detected via the typed
 // GetSoftwareMajorMinorVersion method and cached. On any detection error it
@@ -374,6 +420,8 @@ func (c *ArrayClient) BulkMetrics(ctx context.Context, topo *Topology) ([]Sample
 	samples = append(samples, deriveAlerts(c.name, topo)...)
 	samples = append(samples, c.replicationMetrics(ctx, topo)...)
 	samples = append(samples, c.fileSystemPerf(ctx, topo)...)
+	samples = append(samples, c.volumeGroupPerf(ctx, topo)...)
+	samples = append(samples, c.clusterSpace(ctx, topo)...)
 	return samples, nil
 }
 

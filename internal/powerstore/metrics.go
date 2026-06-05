@@ -73,6 +73,14 @@ func alertLabels(arrayName, clusterID, severity string) []Label {
 	)
 }
 
+// volumeGroupLabels builds the canonical volume-group label set.
+func volumeGroupLabels(arrayName, clusterID, vgName, vgID string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"volume_group_name", vgName},
+		Label{"volume_group_id", vgID},
+	)
+}
+
 // replicationSessionLabels builds the label set for a replication session's
 // info series. `state` is the current RSStateEnum value as a string.
 func replicationSessionLabels(arrayName, clusterID, sessionID, localResourceID, resourceType, role, sessionType, remoteSystemID, state string) []Label {

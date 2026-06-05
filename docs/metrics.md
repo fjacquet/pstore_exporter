@@ -51,6 +51,36 @@ Each appliance metric carries: `array`, `cluster_id`, `appliance_name`, `applian
 | `powerstore_appliance_snapshot_savings_ratio` | ratio | Savings attributable to snapshots |
 | `powerstore_appliance_thin_savings_ratio` | ratio | Savings attributable to thin provisioning |
 
+## Cluster capacity metrics
+
+Cluster-wide space rollup for capacity forecasting (`SpaceMetricsByCluster`). Carries only
+`array`, `cluster_id`.
+
+| Metric | Unit | Description |
+|---|---|---|
+| `powerstore_cluster_physical_total_bytes` | bytes | Total physical capacity of the cluster |
+| `powerstore_cluster_physical_used_bytes` | bytes | Physical space consumed |
+| `powerstore_cluster_logical_provisioned_bytes` | bytes | Total provisioned logical capacity |
+| `powerstore_cluster_logical_used_bytes` | bytes | Logical space written |
+| `powerstore_cluster_data_reduction_ratio` | ratio | Cluster data-reduction ratio (N:1) |
+| `powerstore_cluster_efficiency_ratio` | ratio | Overall cluster efficiency ratio (N:1) |
+
+## Volume group metrics
+
+Each volume-group metric carries: `array`, `cluster_id`, `volume_group_name`,
+`volume_group_id`. Performance comes from `PerformanceMetricsByVg`.
+
+| Metric | Unit | Description |
+|---|---|---|
+| `powerstore_volume_group_read_iops` | ops/s | Read I/O operations per second |
+| `powerstore_volume_group_write_iops` | ops/s | Write I/O operations per second |
+| `powerstore_volume_group_total_iops` | ops/s | Total I/O operations per second |
+| `powerstore_volume_group_read_bandwidth_bytes_per_second` | bytes/s | Read throughput |
+| `powerstore_volume_group_write_bandwidth_bytes_per_second` | bytes/s | Write throughput |
+| `powerstore_volume_group_read_latency_microseconds` | µs | Average read latency |
+| `powerstore_volume_group_write_latency_microseconds` | µs | Average write latency |
+| `powerstore_volume_group_avg_io_size_bytes` | bytes | Average I/O size |
+
 ## File system metrics
 
 Each file system metric carries: `array`, `cluster_id`, `file_system_name`, `file_system_id`,
@@ -135,6 +165,9 @@ avg by (appliance_name) (powerstore_appliance_read_latency_microseconds)
 # Physical capacity utilization per appliance
 100 * powerstore_appliance_physical_used_bytes / powerstore_appliance_physical_total_bytes
 
+# Cluster physical capacity utilization %
+100 * powerstore_cluster_physical_used_bytes / powerstore_cluster_physical_total_bytes
+
 # Ports that are down
 powerstore_port_link_up == 0
 
@@ -155,11 +188,10 @@ not unavailable — they are simply not collected yet. Implementation order and 
 are in [`reconciliation-2026-06-05.md`](reconciliation-2026-06-05.md) and
 [ADR-0009](adr/0009-expand-metric-coverage-library-first.md).
 
-- **Volume group performance** (`powerstore_volume_group_*`) — IOPS/bandwidth/latency per
-  volume group via `PerformanceMetricsByVg`. *(P2)*
-- **Capacity** (`powerstore_cluster_*`, `powerstore_volume_logical_used_bytes`) — cluster
-  and per-volume space via `SpaceMetricsByCluster` / `SpaceMetricsByVolume` / `GetCapacity`.
-  *(P2)*
+- **Per-volume space** (`powerstore_volume_logical_used_bytes`) — per-volume growth via
+  `SpaceMetricsByVolume`. Deferred: it adds one API call per volume (doubling the per-volume
+  call volume); cluster-level forecasting via `powerstore_cluster_*` covers the common case
+  first. *(P3)*
 - **Drive wear** (`powerstore_drive_endurance_remaining_ratio`) — SSD endurance via
   `WearMetricsByDrive` (needs drive-ID enumeration through the generic API). *(P3)*
 - **NAS/SMB/NFS per-protocol & per-node performance** — `PerformanceMetricsNfs*ByNode`,
