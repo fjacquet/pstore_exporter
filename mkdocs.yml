@@ -67,3 +67,4 @@ nav:
       - "0005: Multi-Array and Array Label": adr/0005-multi-array-and-array-label.md
       - "0006: Metric Naming and Units": adr/0006-metric-naming-and-units.md
       - "0007: Serve HTTP Before First Collection": adr/0007-serve-http-before-first-collection.md
+      - "0008: GoReleaser, SHA-Pinning, and Signing": adr/0008-goreleaser-sha-pinning-and-signing.md

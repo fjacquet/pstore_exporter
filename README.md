@@ -116,7 +116,7 @@ Deployment manifests and examples live in [`deploy/`](deploy/); Grafana dashboar
 ## Development
 
 ```bash
-make tools         # install golangci-lint, cyclonedx-gomod, govulncheck (pinned)
+make tools         # install golangci-lint, govulncheck (pinned)
 make sure          # fmt + vet + test + build + golangci-lint
 make ci            # the gate CI runs (adds go test -race + govulncheck)
 ```

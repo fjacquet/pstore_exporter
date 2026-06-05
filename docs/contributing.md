@@ -13,9 +13,11 @@ workflow, invariants you must not break, and the PR checklist.
 | semgrep | latest | `pip install semgrep` or `brew install semgrep` |
 | mkdocs + mkdocs-material | latest | `pip install mkdocs-material pymdown-extensions` |
 | Docker + Compose | any recent | for the stack target |
+| goreleaser + syft + cosign | latest | release/SBOM tooling — `brew install goreleaser syft cosign` (optional) |
 
-Run `make tools` to install the pinned Go tooling (golangci-lint, cyclonedx-gomod,
-govulncheck) into your `$GOPATH/bin`.
+Run `make tools` to install the pinned Go tooling (golangci-lint, govulncheck)
+into your `$GOPATH/bin`. Release tooling (`goreleaser`, `syft`, `cosign`) is only
+needed for `make sbom`/`make release` and is provided by CI actions otherwise.
 
 ## Local Development Workflow
 
