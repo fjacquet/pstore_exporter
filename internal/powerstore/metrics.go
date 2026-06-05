@@ -65,6 +65,62 @@ func portLabels(arrayName, clusterID, portName, portID, kind, applID string) []L
 	)
 }
 
+// alertLabels builds the canonical alert label set. Alerts are aggregated by
+// severity (not per-alert) to keep the series count bounded and stable.
+func alertLabels(arrayName, clusterID, severity string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"severity", severity},
+	)
+}
+
+// driveLabels builds the canonical drive label set.
+func driveLabels(arrayName, clusterID, driveID, driveName, applianceID string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"drive_id", driveID},
+		Label{"drive_name", driveName},
+		Label{"appliance_id", applianceID},
+	)
+}
+
+// volumeGroupLabels builds the canonical volume-group label set.
+func volumeGroupLabels(arrayName, clusterID, vgName, vgID string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"volume_group_name", vgName},
+		Label{"volume_group_id", vgID},
+	)
+}
+
+// replicationSessionLabels builds the label set for a replication session's
+// info series. `state` is the current RSStateEnum value as a string.
+func replicationSessionLabels(arrayName, clusterID, sessionID, localResourceID, resourceType, role, sessionType, remoteSystemID, state string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"session_id", sessionID},
+		Label{"local_resource_id", localResourceID},
+		Label{"resource_type", resourceType},
+		Label{"role", role},
+		Label{"type", sessionType},
+		Label{"remote_system_id", remoteSystemID},
+		Label{"state", state},
+	)
+}
+
+// replicationResourceLabels builds the label set for per-resource replication
+// transfer metrics (resourceType is e.g. "volume").
+func replicationResourceLabels(arrayName, clusterID, resourceID, resourceType string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"resource_id", resourceID},
+		Label{"resource_type", resourceType},
+	)
+}
+
+// replicationRuleLabels builds the label set for replication-rule metrics (RPO).
+func replicationRuleLabels(arrayName, clusterID, ruleID, remoteSystemID string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"rule_id", ruleID},
+		Label{"remote_system_id", remoteSystemID},
+	)
+}
+
 // b2f converts a bool to a float64 metric value (1 for true, 0 for false).
 func b2f(b bool) float64 {
 	if b {

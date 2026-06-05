@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-05
+
+Metric coverage expansion from reconciling the exporter against the full PowerStore
+REST API reference and the pinned `gopowerstore` v1.22.0 surface (library-first; no
+dependency bump). See `docs/reconciliation-2026-06-05.md` and ADR-0009.
+
+### Added
+
+- Hardware alert metrics (`powerstore_alert_active`): count of active alerts by
+  severity, via `GetAlerts`, with stable zero series for alerting rules.
+- Replication & protection metrics (`powerstore_replication_*`): session-state info
+  series, RPO seconds, mirror transfer rate, and data-remaining backlog, via
+  `GetReplicationRules` / `GetReplicationSessionByLocalResourceID` /
+  `VolumeMirrorTransferRate`.
+- File-system performance metrics (`powerstore_file_system_*` IOPS/bandwidth/latency)
+  via `PerformanceMetricsByFileSystem`, parallel to the volume metrics.
+- Volume-group performance metrics (`powerstore_volume_group_*`) via
+  `PerformanceMetricsByVg`.
+- Cluster capacity metrics (`powerstore_cluster_*`: physical/logical space,
+  data-reduction and efficiency ratios) via `SpaceMetricsByCluster`, for capacity
+  forecasting.
+- Drive wear and lifecycle-state metrics (`powerstore_drive_wear_level_ratio`,
+  `powerstore_drive_state`) from a single generic `hardware` enumeration.
+
+### Fixed
+
+- Corrected stale documentation (ADR-0003, `CLAUDE.md`, `docs/metrics.md`) that
+  claimed `PerformanceMetricsByFileSystem` was unavailable in gopowerstore v1.22;
+  the method exists and is now used. Recorded the decision in ADR-0009 and audited
+  the existing metric mappings (field names, units, gauge semantics) against the
+  REST API spec.
+
 ## [0.1.0] - 2026-06-04
 
 ### Added
@@ -35,5 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MkDocs-Material documentation site.
 - GitHub Actions workflows for CI, release, and docs publication.
 
-[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.1.0...main
+[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.3.0...main
+[0.3.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/fjacquet/pstore_exporter/releases/tag/v0.2.0
 [0.1.0]: https://github.com/fjacquet/pstore_exporter/releases/tag/v0.1.0

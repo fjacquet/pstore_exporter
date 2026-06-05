@@ -34,8 +34,11 @@ Decisions are recorded in `docs/adr/`; metric catalog in `docs/metrics.md`.
   Aggregate with `sum`/`avg` in PromQL — NEVER `rate()`.
 - **gopowerstore v1.22 limits:** no list-appliances method (enumerate distinct IDs from
   volumes+ports → `GetAppliance`); no version field on appliances (use
-  `GetSoftwareMajorMinorVersion` for bulk capability ≥4.1); no `PerformanceMetricsByFileSystem`
-  (FS capacity comes from inventory). See `docs/adr/0003`.
+  `GetSoftwareMajorMinorVersion` for bulk capability ≥4.1); no drive-list method (enumerate
+  via generic `APIClient().Query`). NOTE: `PerformanceMetricsByFileSystem` **does** exist in
+  v1.22 — ADR-0003's "no FS perf" note is stale (superseded by ADR-0009). Live FS performance
+  is now collected (`derive_filesystem_perf.go`) alongside inventory-derived FS capacity. See
+  `docs/adr/0003`, `docs/adr/0009`, and `docs/reconciliation-2026-06-05.md`.
 - **Serve before collect:** the HTTP server must start before the first collection cycle —
   gopowerstore's login isn't bounded by the collection timeout, so blocking startup on it
   stalls `/metrics`. See `docs/adr/0007`.

@@ -15,6 +15,11 @@ type Topology struct {
 	FCPorts      []gopowerstore.FcPort
 	EthPorts     []gopowerstore.EthPort
 
+	// Alerts is the per-cycle list of array alerts. Unlike the inventory slices
+	// above it is dynamic state (not used for label resolution), so it is set
+	// directly by GetTopology after construction rather than via NewTopology.
+	Alerts []gopowerstore.Alert
+
 	applianceName       map[string]string
 	applianceServiceTag map[string]string
 	vgName              map[string]string
