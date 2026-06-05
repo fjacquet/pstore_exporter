@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- GoReleaser-driven release pipeline (`.goreleaser.yaml`): cross-platform archives,
+  `checksums.txt`, multi-arch GHCR image, and a Homebrew cask published to
+  `fjacquet/homebrew-tap` (`brew install fjacquet/tap/pstore_exporter`).
+- Keyless **cosign** signature of the release checksums (Sigstore bundle,
+  `checksums.txt.sigstore.json`) via GitHub OIDC — no long-lived keys.
+- `make release-snapshot` for a local dry-run of the full release pipeline.
+
+### Changed
+
+- SBOM generation moved into GoReleaser (syft) as the single source of truth,
+  replacing `cyclonedx-gomod`. Releases now ship a CycloneDX SBOM per archive
+  (`*.cdx.json`); CI regenerates them in snapshot mode. `make tools` no longer
+  installs `cyclonedx-gomod`.
+- Release artifacts are now `.tar.gz` archives (was raw binaries).
+- Dev `Dockerfile` build stage pinned to `golang:1.26.4` (matches `go.mod`).
+
+### Security
+
+- All third-party and first-party GitHub Actions are now pinned to full commit
+  SHAs (with `# vX` comments) across `ci.yml`, `release.yml`, and `docs.yml`,
+  hardening the CI/CD supply chain against mutable-tag attacks. See
+  [ADR 0008](adr/0008-goreleaser-sha-pinning-and-signing.md).
+
 ## [0.1.0] - 2026-06-04
 
 ### Added

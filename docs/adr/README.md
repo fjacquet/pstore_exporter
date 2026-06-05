@@ -16,3 +16,4 @@ Records are numbered sequentially and use the MADR-lite format.
 | [0005](0005-multi-array-and-array-label.md) | Multi-Array Support and Array Label | Accepted |
 | [0006](0006-metric-naming-and-units.md) | Metric Naming and Units | Accepted |
 | [0007](0007-serve-http-before-first-collection.md) | Serve HTTP Before First Collection | Accepted |
+| [0008](0008-goreleaser-sha-pinning-and-signing.md) | GoReleaser, SHA-Pinned Actions, and Signed Artifacts | Accepted |

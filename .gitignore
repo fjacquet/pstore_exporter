@@ -9,3 +9,9 @@ clusters.yaml
 
 # MkDocs build output
 /site/
+
+# GoReleaser output
+/dist/
+
+# RTK local tooling state
+/.rtk/

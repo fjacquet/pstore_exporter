@@ -1,0 +1,118 @@
+# GoReleaser configuration — https://goreleaser.com
+# Drives the release pipeline: cross-platform binaries, CycloneDX SBOMs (syft),
+# multi-arch GHCR image with SBOM + provenance attestations, and cosign signatures.
+# Validate locally with: goreleaser check
+version: 2
+
+project_name: pstore_exporter
+
+builds:
+  - id: pstore_exporter
+    main: .
+    binary: pstore_exporter
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: pstore_exporter
+    ids:
+      - pstore_exporter
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE*
+      - README.md
+      - config.yaml
+
+checksum:
+  name_template: checksums.txt
+
+# CycloneDX SBOM per release archive (replaces cyclonedx-gomod). syft catalogs the
+# archived Go binary's embedded module graph and emits cyclonedx-json.
+sboms:
+  - id: cyclonedx
+    artifacts: archive
+    documents:
+      - "${artifact}.cdx.json"
+    cmd: syft
+    args:
+      - "$artifact"
+      - "--output"
+      - "cyclonedx-json=$document"
+
+# Multi-arch container image via buildx. sbom:true attaches SBOM + provenance
+# attestations natively (same posture as the former docker/build-push-action job).
+dockers_v2:
+  - id: pstore_exporter
+    ids:
+      - pstore_exporter
+    dockerfile: Dockerfile.goreleaser
+    images:
+      - "ghcr.io/fjacquet/pstore_exporter"
+    tags:
+      - "{{ .Version }}"
+      - "{{ .Major }}.{{ .Minor }}"
+      - "{{ if not .Prerelease }}latest{{ end }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    extra_files:
+      - config.yaml
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.source: "https://github.com/fjacquet/pstore_exporter"
+    sbom: true
+
+# Keyless cosign signature of the checksums file (covers every artifact via the
+# checksum). Relies on GitHub OIDC (id-token: write) — no long-lived keys.
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+# Publishes a Homebrew cask to fjacquet/homebrew-tap so macOS/Linux users can
+# `brew install fjacquet/tap/pstore_exporter`. Needs HOMEBREW_TAP_GITHUB_TOKEN
+# (a PAT with contents:write on the tap repo) — the default GITHUB_TOKEN cannot
+# push to another repository. Skipped automatically on snapshots/prereleases.
+homebrew_casks:
+  - name: pstore_exporter
+    binaries:
+      - pstore_exporter
+    homepage: "https://github.com/fjacquet/pstore_exporter"
+    description: "Dell PowerStore Prometheus + OTLP exporter"
+    license: "Apache-2.0"
+    directory: Casks
+    skip_upload: auto
+    repository:
+      owner: fjacquet
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+
+release:
+  github:
+    owner: fjacquet
+    name: pstore_exporter
+  prerelease: auto
+
+changelog:
+  use: github

@@ -6,20 +6,28 @@
 - A PowerStore user with **monitor** (read-only) privileges.
 - One of: Go 1.25+ toolchain (build from source), Docker, or a Kubernetes cluster.
 
-## From a release binary
-
-Download the binary for your platform from the
-[releases page](https://github.com/fjacquet/pstore_exporter/releases) and verify it
-against `checksums.txt`:
+## With Homebrew
 
 ```bash
-sha256sum -c checksums.txt --ignore-missing
-chmod +x pstore_exporter_*_linux_amd64
-sudo install pstore_exporter_*_linux_amd64 /usr/local/bin/pstore_exporter
+brew install fjacquet/tap/pstore_exporter
 pstore_exporter --version
 ```
 
-Each release also ships a CycloneDX SBOM (`sbom.cdx.json`).
+## From a release archive
+
+Download the `.tar.gz` for your platform from the
+[releases page](https://github.com/fjacquet/pstore_exporter/releases). Each release
+is signed with keyless cosign — verify the checksums, then extract:
+
+```bash
+cosign verify-blob --bundle checksums.txt.sigstore.json checksums.txt   # optional
+sha256sum -c checksums.txt --ignore-missing
+tar -xzf pstore_exporter_*_linux_amd64.tar.gz
+sudo install pstore_exporter /usr/local/bin/pstore_exporter
+pstore_exporter --version
+```
+
+Each archive also ships a CycloneDX SBOM (`<archive>.cdx.json`).
 
 ## From source
 
