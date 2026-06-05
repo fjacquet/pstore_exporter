@@ -112,6 +112,17 @@ Each port metric carries: `array`, `cluster_id`, `port_name`, `port_id`, `port_t
 |---|---|---|
 | `powerstore_port_link_up` | (port labels) | `1` if the port link is up, `0` if down. |
 
+## Drive metrics
+
+Each drive metric carries: `array`, `cluster_id`, `drive_id`, `drive_name`, `appliance_id`.
+Drives are enumerated via a single generic GET on the `hardware` resource (PowerStore exposes
+no typed list-drives method; see [ADR-0009](adr/0009-expand-metric-coverage-library-first.md)).
+
+| Metric | Labels | Description |
+|---|---|---|
+| `powerstore_drive_state` | `state` | Info series, always `1`; the drive's lifecycle state is the `state` label (`Healthy`, `Failed`, …). |
+| `powerstore_drive_wear_level_ratio` | (drive labels) | SSD wear consumed, `0.0` (new) → `1.0` (worn out). Only emitted on PowerStoreOS ≥ 4.3.0.0, which reports `drive_wear_level`. |
+
 ## Alert metrics
 
 Each alert metric carries: `array`, `cluster_id`, `severity`.
@@ -179,6 +190,12 @@ powerstore_replication_session_state{state=~"Error|Fractured|System_Paused|Pause
 
 # Replication backlog exceeding 1 GiB
 powerstore_replication_data_remaining_bytes > 1073741824
+
+# Drives that are not healthy
+powerstore_drive_state{state!="Healthy"}
+
+# SSDs past 80% wear
+powerstore_drive_wear_level_ratio > 0.8
 ```
 
 ## Deferred metrics (available in the API, not yet wired)
@@ -192,7 +209,5 @@ are in [`reconciliation-2026-06-05.md`](reconciliation-2026-06-05.md) and
   `SpaceMetricsByVolume`. Deferred: it adds one API call per volume (doubling the per-volume
   call volume); cluster-level forecasting via `powerstore_cluster_*` covers the common case
   first. *(P3)*
-- **Drive wear** (`powerstore_drive_endurance_remaining_ratio`) — SSD endurance via
-  `WearMetricsByDrive` (needs drive-ID enumeration through the generic API). *(P3)*
 - **NAS/SMB/NFS per-protocol & per-node performance** — `PerformanceMetricsNfs*ByNode`,
   `PerformanceMetricsSmb*ByNode`, `PerformanceMetricsByNode`. Deferred under YAGNI. *(P3)*

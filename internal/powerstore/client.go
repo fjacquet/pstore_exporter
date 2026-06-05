@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dell/gopowerstore"
+	"github.com/dell/gopowerstore/api"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/fjacquet/pstore_exporter/internal/logging"
@@ -376,6 +377,48 @@ func (c *ArrayClient) clusterSpace(ctx context.Context, topo *Topology) []Sample
 	return deriveClusterSpace(c.name, topo, resp)
 }
 
+// driveMetrics emits per-drive lifecycle state and wear. PowerStore exposes no
+// typed list-drives method, so drives are enumerated through the generic API
+// (the sanctioned fallback per ADR-0009): a single GET on the hardware resource
+// filtered to type=Drive, which returns each drive's extra_details.drive_wear_level
+// in one call (no per-drive metrics requests). Called from both export paths.
+func (c *ArrayClient) driveMetrics(ctx context.Context, topo *Topology) []Sample {
+	drives, err := c.enumerateDrives(ctx)
+	if err != nil {
+		logging.LogWarn(fmt.Sprintf("array %q: enumerate drives: %v", c.name, err))
+		return nil
+	}
+	return deriveDrives(c.name, topo, drives)
+}
+
+// enumerateDrives lists drive hardware via the generic API, paginating defensively.
+func (c *ArrayClient) enumerateDrives(ctx context.Context) ([]driveInfo, error) {
+	const pageSize = 2000
+	var all []driveInfo
+	for offset := 0; ; offset += pageSize {
+		qp := c.gp.APIClient().QueryParams().
+			RawArg("type", "eq.Drive").
+			Select("id", "name", "appliance_id", "life_cycle_state", "extra_details").
+			Order("id").
+			Limit(pageSize).
+			Offset(offset)
+
+		var page []driveInfo
+		_, err := c.gp.APIClient().Query(ctx, api.RequestConfig{
+			Method:      "GET",
+			Endpoint:    "hardware",
+			QueryParams: qp,
+		}, &page)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page...)
+		if len(page) < pageSize {
+			return all, nil
+		}
+	}
+}
+
 // BulkCapable reports whether the array supports the bulk CSV metrics API
 // (introduced in PowerStoreOS 4.1). The version is detected via the typed
 // GetSoftwareMajorMinorVersion method and cached. On any detection error it
@@ -422,6 +465,7 @@ func (c *ArrayClient) BulkMetrics(ctx context.Context, topo *Topology) ([]Sample
 	samples = append(samples, c.fileSystemPerf(ctx, topo)...)
 	samples = append(samples, c.volumeGroupPerf(ctx, topo)...)
 	samples = append(samples, c.clusterSpace(ctx, topo)...)
+	samples = append(samples, c.driveMetrics(ctx, topo)...)
 	return samples, nil
 }
 

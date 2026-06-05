@@ -73,6 +73,15 @@ func alertLabels(arrayName, clusterID, severity string) []Label {
 	)
 }
 
+// driveLabels builds the canonical drive label set.
+func driveLabels(arrayName, clusterID, driveID, driveName, applianceID string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"drive_id", driveID},
+		Label{"drive_name", driveName},
+		Label{"appliance_id", applianceID},
+	)
+}
+
 // volumeGroupLabels builds the canonical volume-group label set.
 func volumeGroupLabels(arrayName, clusterID, vgName, vgID string) []Label {
 	return append(baseLabels(arrayName, clusterID),

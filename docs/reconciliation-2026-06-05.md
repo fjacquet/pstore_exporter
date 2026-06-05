@@ -126,7 +126,13 @@ add only when a concrete dashboard needs them.
    Per-volume space (`SpaceMetricsByVolume`) deferred to P3 — it doubles per-volume calls and
    cluster-level forecasting covers the common case first. `GetCapacity` skipped in favour of
    `SpaceMetricsByCluster.PhysicalTotal`, which has clearer semantics.
-5. Drive wear (needs drive enumeration); P3 protocol/node detail last.
+5. ~~Drive wear (needs drive enumeration)~~ — **DONE.** `powerstore_drive_wear_level_ratio`
+   + `powerstore_drive_state` via a single generic GET on the hardware resource
+   (`derive_drives.go` + `ArrayClient.enumerateDrives`) — the one sanctioned use of the
+   generic `APIClient().Query` fallback. Wear read from `extra_details.drive_wear_level`
+   (PowerStoreOS ≥ 4.3) rather than N per-drive `WearMetricsByDrive` calls.
+6. Remaining P3 (deferred, YAGNI): per-volume space (`SpaceMetricsByVolume`) and NAS/SMB/NFS
+   per-protocol/per-node performance.
 
 Each step: add the derive function (mirroring `derive_perentity.go`), reuse shared label
 builders in `metrics.go`, wire into both `PerEntityMetrics` and `BulkMetrics`, add a
