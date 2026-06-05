@@ -8,9 +8,40 @@
 
 ## With Homebrew
 
+The exporter is distributed as a Homebrew cask from the `fjacquet/tap` tap (works on
+macOS and Linuxbrew). Installing auto-taps, so a single command is enough:
+
 ```bash
 brew install fjacquet/tap/pstore_exporter
 pstore_exporter --version
+```
+
+Equivalently, tap first and then install by short name:
+
+```bash
+brew tap fjacquet/tap
+brew install pstore_exporter
+```
+
+The cask installs only the `pstore_exporter` binary onto your `PATH` (it does **not**
+ship a config). Provide your own `config.yaml` and run it:
+
+```bash
+# grab the sample config to start from
+curl -fsSLO https://raw.githubusercontent.com/fjacquet/pstore_exporter/main/config.yaml
+$EDITOR config.yaml                                  # set your array hostname(s)/user
+export PSTORE1_PASSWORD='your-monitor-password'      # password via env, not the file
+pstore_exporter --config config.yaml
+# metrics: http://localhost:9101/metrics   health: http://localhost:9101/health
+```
+
+See [Configuration](configuration.md) for the full config reference. Upgrade or
+remove with the usual Homebrew commands:
+
+```bash
+brew upgrade pstore_exporter      # to the latest tagged release
+brew uninstall pstore_exporter    # remove
+brew untap fjacquet/tap           # (optional) drop the tap entirely
 ```
 
 ## From a release archive
