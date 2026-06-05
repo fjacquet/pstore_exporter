@@ -36,6 +36,9 @@ func (c *ArrayClient) PerEntityMetrics(ctx context.Context, topo *Topology) ([]S
 
 	samples = append(samples, deriveFileSystemCapacity(c.name, topo)...)
 	samples = append(samples, derivePortLinkStatus(c.name, topo)...)
+	samples = append(samples, deriveAlerts(c.name, topo)...)
+	samples = append(samples, c.replicationMetrics(ctx, topo)...)
+	samples = append(samples, c.fileSystemPerf(ctx, topo)...)
 
 	return samples, nil
 }

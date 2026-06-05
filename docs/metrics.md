@@ -56,10 +56,22 @@ Each appliance metric carries: `array`, `cluster_id`, `appliance_name`, `applian
 Each file system metric carries: `array`, `cluster_id`, `file_system_name`, `file_system_id`,
 `nas_server_name`, `nas_server_id`.
 
+Capacity is inventory-derived; performance comes from the typed
+`PerformanceMetricsByFileSystem` method (averaged counters), parallel to the volume
+performance metrics. Both are emitted on the bulk and per-entity paths.
+
 | Metric | Unit | Description |
 |---|---|---|
 | `powerstore_file_system_size_total_bytes` | bytes | Provisioned file system capacity |
 | `powerstore_file_system_size_used_bytes` | bytes | Used file system capacity |
+| `powerstore_file_system_read_iops` | ops/s | Average read I/O operations per second |
+| `powerstore_file_system_write_iops` | ops/s | Average write I/O operations per second |
+| `powerstore_file_system_total_iops` | ops/s | Average total I/O operations per second |
+| `powerstore_file_system_read_bandwidth_bytes_per_second` | bytes/s | Average read throughput |
+| `powerstore_file_system_write_bandwidth_bytes_per_second` | bytes/s | Average write throughput |
+| `powerstore_file_system_read_latency_microseconds` | µs | Average read latency |
+| `powerstore_file_system_write_latency_microseconds` | µs | Average write latency |
+| `powerstore_file_system_avg_io_size_bytes` | bytes | Average I/O size |
 
 ## Port metrics
 
@@ -69,6 +81,39 @@ Each port metric carries: `array`, `cluster_id`, `port_name`, `port_id`, `port_t
 | Metric | Labels | Description |
 |---|---|---|
 | `powerstore_port_link_up` | (port labels) | `1` if the port link is up, `0` if down. |
+
+## Alert metrics
+
+Each alert metric carries: `array`, `cluster_id`, `severity`.
+
+| Metric | Labels | Description |
+|---|---|---|
+| `powerstore_alert_active` | `severity` | Count of **active** (uncleared) alerts at this severity. |
+
+Alerts are aggregated **by severity** (not one series per alert) to keep cardinality
+bounded. The standard PowerStore severities — `Critical`, `Major`, `Minor`, `Info`, `None` —
+are always emitted, with value `0` when no active alert matches, so alerting rules can rely
+on a stable series (e.g. `powerstore_alert_active{severity="Critical"} > 0`) rather than one
+that disappears when the array is healthy. Source: `gopowerstore` `GetAlerts`. Emitted on
+both the bulk and per-entity paths (see [ADR-0009](adr/0009-expand-metric-coverage-library-first.md)).
+
+## Replication metrics
+
+Source: typed `gopowerstore` methods (`GetReplicationRules`,
+`GetReplicationSessionByLocalResourceID`, `VolumeMirrorTransferRate`). Sessions and transfer
+metrics are enumerated from volumes carrying a protection policy. Emitted on both export
+paths (see [ADR-0009](adr/0009-expand-metric-coverage-library-first.md)).
+
+| Metric | Labels | Description |
+|---|---|---|
+| `powerstore_replication_session_state` | `session_id`, `local_resource_id`, `resource_type`, `role`, `type`, `remote_system_id`, `state` | Info series, always `1`; the session's current state is the `state` label (`OK`, `Synchronizing`, `Error`, `Fractured`, `System_Paused`, …). |
+| `powerstore_replication_rpo_seconds` | `rule_id`, `remote_system_id` | Configured RPO of a replication rule, in seconds (`0` = synchronous). |
+| `powerstore_replication_transfer_rate_bytes_per_second` | `resource_id`, `resource_type` | Current mirror replication throughput for the resource. |
+| `powerstore_replication_data_remaining_bytes` | `resource_id`, `resource_type` | Outstanding data still to be replicated (backlog / RPO-risk indicator). |
+
+The `state` metric follows the enum/info idiom: alert on undesirable states with a label
+matcher rather than a numeric threshold — `powerstore_replication_session_state` carries the
+value `1` regardless of state.
 
 ## PromQL guidance
 
@@ -92,14 +137,30 @@ avg by (appliance_name) (powerstore_appliance_read_latency_microseconds)
 
 # Ports that are down
 powerstore_port_link_up == 0
+
+# Any active critical alerts, per array
+sum by (array) (powerstore_alert_active{severity="Critical"}) > 0
+
+# Replication sessions in a bad state
+powerstore_replication_session_state{state=~"Error|Fractured|System_Paused|Paused"}
+
+# Replication backlog exceeding 1 GiB
+powerstore_replication_data_remaining_bytes > 1073741824
 ```
 
-## Deferred metrics (planned for a future release)
+## Deferred metrics (available in the API, not yet wired)
 
-The following object types are not yet collected in v1 but are planned:
+The following are exposed by `gopowerstore` v1.22.0 as typed methods and are **available**,
+not unavailable — they are simply not collected yet. Implementation order and field mappings
+are in [`reconciliation-2026-06-05.md`](reconciliation-2026-06-05.md) and
+[ADR-0009](adr/0009-expand-metric-coverage-library-first.md).
 
-- **Drive wear** (`powerstore_drive_*`) — SSD endurance metrics per drive.
-- **Volume group performance** (`powerstore_volume_group_*`) — aggregate IOPS/bandwidth
-  per volume group.
-- **NAS server performance** (`powerstore_nas_server_*`) — file protocol throughput and
-  latency per NAS server.
+- **Volume group performance** (`powerstore_volume_group_*`) — IOPS/bandwidth/latency per
+  volume group via `PerformanceMetricsByVg`. *(P2)*
+- **Capacity** (`powerstore_cluster_*`, `powerstore_volume_logical_used_bytes`) — cluster
+  and per-volume space via `SpaceMetricsByCluster` / `SpaceMetricsByVolume` / `GetCapacity`.
+  *(P2)*
+- **Drive wear** (`powerstore_drive_endurance_remaining_ratio`) — SSD endurance via
+  `WearMetricsByDrive` (needs drive-ID enumeration through the generic API). *(P3)*
+- **NAS/SMB/NFS per-protocol & per-node performance** — `PerformanceMetricsNfs*ByNode`,
+  `PerformanceMetricsSmb*ByNode`, `PerformanceMetricsByNode`. Deferred under YAGNI. *(P3)*

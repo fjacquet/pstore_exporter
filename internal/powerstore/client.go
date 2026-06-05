@@ -85,6 +85,7 @@ func (c *ArrayClient) GetTopology(ctx context.Context) (*Topology, error) {
 		fs      []gopowerstore.FileSystem
 		fc      []gopowerstore.FcPort
 		eth     []gopowerstore.EthPort
+		alerts  []gopowerstore.Alert
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -142,12 +143,25 @@ func (c *ArrayClient) GetTopology(ctx context.Context) (*Topology, error) {
 		eth = v
 		return nil
 	})
+	g.Go(func() error {
+		resp, err := c.gp.GetAlerts(gctx, gopowerstore.GetAlertsOpts{})
+		if err != nil {
+			logging.LogWarn(fmt.Sprintf("array %q: get alerts: %v", c.name, err))
+			return nil
+		}
+		if resp != nil {
+			alerts = resp.Alerts
+		}
+		return nil
+	})
 	// errgroup always returns nil here because each goroutine swallows errors.
 	_ = g.Wait()
 
 	appliances := c.enumerateAppliances(ctx, volumes, fc, eth)
 
-	return NewTopology(cluster, appliances, volumes, vgs, nas, fs, fc, eth), nil
+	topo := NewTopology(cluster, appliances, volumes, vgs, nas, fs, fc, eth)
+	topo.Alerts = alerts
+	return topo, nil
 }
 
 // enumerateAppliances resolves the distinct appliances referenced by the
@@ -208,6 +222,114 @@ func (c *ArrayClient) enumerateAppliances(
 	return appliances
 }
 
+// replicationMetrics collects replication session state, RPO, and transfer metrics
+// via typed gopowerstore methods. It is library-first: RPO comes from the
+// cluster-wide GetReplicationRules; sessions and transfer rates are enumerated
+// from the volumes that carry a protection policy (PowerStore exposes no
+// list-replication-sessions method), one typed call per replicated volume.
+// Per-call failures are logged and skipped (graceful degradation). It is called
+// from BOTH export paths so the bulk and per-entity outputs stay at parity.
+func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []Sample {
+	var samples []Sample
+
+	if rules, err := c.gp.GetReplicationRules(ctx); err != nil {
+		logging.LogWarn(fmt.Sprintf("array %q: get replication rules: %v", c.name, err))
+	} else {
+		samples = append(samples, deriveReplicationRules(c.name, topo, rules)...)
+	}
+
+	// Candidate resources: volumes with a protection policy may have a
+	// replication session. Volumes without one are skipped to avoid a flood of
+	// not-found lookups.
+	var replicated []string
+	for _, v := range topo.Volumes {
+		if v.ProtectionPolicyID != "" {
+			replicated = append(replicated, v.ID)
+		}
+	}
+	if len(replicated) == 0 {
+		return samples
+	}
+
+	type resReplication struct {
+		session  gopowerstore.ReplicationSession
+		hasSess  bool
+		transfer []Sample
+	}
+	results := make([]resReplication, len(replicated))
+
+	var mu sync.Mutex
+	g, gctx := errgroup.WithContext(ctx)
+	for i, volID := range replicated {
+		i, volID := i, volID
+		g.Go(func() error {
+			var r resReplication
+			if sess, err := c.gp.GetReplicationSessionByLocalResourceID(gctx, volID); err != nil {
+				logging.LogWarn(fmt.Sprintf("array %q: replication session for volume %s: %v", c.name, volID, err))
+			} else if sess.ID != "" {
+				r.session = sess
+				r.hasSess = true
+			}
+			if rate, err := c.gp.VolumeMirrorTransferRate(gctx, volID); err != nil {
+				logging.LogWarn(fmt.Sprintf("array %q: mirror transfer rate for volume %s: %v", c.name, volID, err))
+			} else {
+				r.transfer = deriveReplicationTransfer(c.name, topo, volID, "volume", rate)
+			}
+			mu.Lock()
+			results[i] = r
+			mu.Unlock()
+			return nil
+		})
+	}
+	_ = g.Wait()
+
+	var sessions []gopowerstore.ReplicationSession
+	for _, r := range results {
+		if r.hasSess {
+			sessions = append(sessions, r.session)
+		}
+		samples = append(samples, r.transfer...)
+	}
+	samples = append(samples, deriveReplicationSessions(c.name, topo, sessions)...)
+	return samples
+}
+
+// fileSystemPerf collects live per-file-system performance via the typed
+// PerformanceMetricsByFileSystem method (available in gopowerstore v1.22.0;
+// see ADR-0009). One typed call per file system, failures logged and skipped.
+// Called from BOTH export paths so bulk and per-entity stay at parity; it
+// complements the inventory-derived file-system capacity metrics.
+func (c *ArrayClient) fileSystemPerf(ctx context.Context, topo *Topology) []Sample {
+	if len(topo.FileSystems) == 0 {
+		return nil
+	}
+	perFS := make([][]Sample, len(topo.FileSystems))
+	var mu sync.Mutex
+	g, gctx := errgroup.WithContext(ctx)
+	for i, fs := range topo.FileSystems {
+		i, fs := i, fs
+		g.Go(func() error {
+			resp, err := c.gp.PerformanceMetricsByFileSystem(gctx, fs.ID, c.interval)
+			if err != nil {
+				logging.LogWarn(fmt.Sprintf("array %q: file system %s perf failed: %v", c.name, fs.ID, err))
+				return nil
+			}
+			s := deriveFileSystemPerf(c.name, topo, fs, resp)
+			mu.Lock()
+			perFS[i] = s
+			mu.Unlock()
+			return nil
+		})
+	}
+	_ = g.Wait()
+
+	var samples []Sample
+	for _, s := range perFS {
+		samples = append(samples, s...)
+	}
+	return samples
+}
+
 // BulkCapable reports whether the array supports the bulk CSV metrics API
 // (introduced in PowerStoreOS 4.1). The version is detected via the typed
 // GetSoftwareMajorMinorVersion method and cached. On any detection error it
@@ -244,10 +366,14 @@ func (c *ArrayClient) BulkMetrics(ctx context.Context, topo *Topology) ([]Sample
 	samples = append(samples, deriveBulkAppliancePerf(c.name, topo, files["performance_metrics_by_appliance.csv"])...)
 	samples = append(samples, deriveBulkApplianceSpace(c.name, topo, files["space_metrics_by_appliance.csv"])...)
 	samples = append(samples, deriveBulkVolumePerf(c.name, topo, files["performance_metrics_by_volume.csv"])...)
-	// File-system capacity and port link status are inventory-derived (no API
-	// call), so emit them on the bulk path too for parity with per-entity.
+	// File-system capacity, port link status, and alerts are topology-derived (no
+	// extra API call here — alerts were fetched in GetTopology), so emit them on
+	// the bulk path too for parity with per-entity.
 	samples = append(samples, deriveFileSystemCapacity(c.name, topo)...)
 	samples = append(samples, derivePortLinkStatus(c.name, topo)...)
+	samples = append(samples, deriveAlerts(c.name, topo)...)
+	samples = append(samples, c.replicationMetrics(ctx, topo)...)
+	samples = append(samples, c.fileSystemPerf(ctx, topo)...)
 	return samples, nil
 }
 
