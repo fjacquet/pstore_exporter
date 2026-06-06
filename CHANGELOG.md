@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-06
+
+Internal code-quality cleanup of the metric-coverage collectors. No behavior
+change — metric names, labels, and values are identical to 0.3.0.
+
+### Changed
+
+- Centralized the metrics shared by the bulk and per-entity export paths into a
+  single `commonMetrics` helper so the metric-parity invariant is structural
+  rather than maintained by convention.
+- Extracted a generic concurrent fan-out helper (`parallelSamples`) for the
+  per-file-system and per-volume-group performance collectors, removing
+  duplicated errgroup boilerplate and unnecessary mutexes.
+- Routed the drive lifecycle-state series through a shared label builder and made
+  the alert series emission deterministic.
+
 ## [0.3.0] - 2026-06-05
 
 Metric coverage expansion from reconciling the exporter against the full PowerStore
@@ -67,7 +83,8 @@ dependency bump). See `docs/reconciliation-2026-06-05.md` and ADR-0009.
 - MkDocs-Material documentation site.
 - GitHub Actions workflows for CI, release, and docs publication.
 
-[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.3.0...main
+[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.3.1...main
+[0.3.1]: https://github.com/fjacquet/pstore_exporter/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/fjacquet/pstore_exporter/releases/tag/v0.2.0
 [0.1.0]: https://github.com/fjacquet/pstore_exporter/releases/tag/v0.1.0
