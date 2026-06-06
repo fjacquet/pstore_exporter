@@ -29,14 +29,11 @@ func deriveDrives(array string, topo *Topology, drives []driveInfo) []Sample {
 		if d.ID == "" {
 			continue
 		}
-		base := driveLabels(array, clusterID, d.ID, d.Name, d.ApplianceID)
-
 		if d.LifeCycleState != "" {
-			stateLabels := append(append([]Label{}, base...), Label{"state", d.LifeCycleState})
-			out = append(out, Sample{"powerstore_drive_state", stateLabels, 1})
+			out = append(out, Sample{"powerstore_drive_state", driveStateLabels(array, clusterID, d.ID, d.Name, d.ApplianceID, d.LifeCycleState), 1})
 		}
 		if d.ExtraDetails.DriveWearLevel != nil {
-			out = append(out, Sample{"powerstore_drive_wear_level_ratio", base, *d.ExtraDetails.DriveWearLevel / 100})
+			out = append(out, Sample{"powerstore_drive_wear_level_ratio", driveLabels(array, clusterID, d.ID, d.Name, d.ApplianceID), *d.ExtraDetails.DriveWearLevel / 100})
 		}
 	}
 	return out

@@ -3,7 +3,6 @@ package powerstore
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/dell/gopowerstore"
@@ -196,19 +195,15 @@ func (c *ArrayClient) enumerateAppliances(
 	}
 
 	results := make([]gopowerstore.ApplianceInstance, len(ids))
-	var mu sync.Mutex
 	g2, gctx2 := errgroup.WithContext(ctx)
 	for i, id := range ids {
-		i, id := i, id // capture loop variables
 		g2.Go(func() error {
 			a, err := c.gp.GetAppliance(gctx2, id)
 			if err != nil {
 				logging.LogWarn(fmt.Sprintf("array %q: get appliance %q: %v", c.name, id, err))
 				return nil
 			}
-			mu.Lock()
-			results[i] = a
-			mu.Unlock()
+			results[i] = a // distinct index per goroutine — no lock needed
 			return nil
 		})
 	}
@@ -242,7 +237,7 @@ func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []
 	// Candidate resources: volumes with a protection policy may have a
 	// replication session. Volumes without one are skipped to avoid a flood of
 	// not-found lookups.
-	var replicated []string
+	replicated := make([]string, 0, len(topo.Volumes))
 	for _, v := range topo.Volumes {
 		if v.ProtectionPolicyID != "" {
 			replicated = append(replicated, v.ID)
@@ -259,10 +254,8 @@ func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []
 	}
 	results := make([]resReplication, len(replicated))
 
-	var mu sync.Mutex
 	g, gctx := errgroup.WithContext(ctx)
 	for i, volID := range replicated {
-		i, volID := i, volID
 		g.Go(func() error {
 			var r resReplication
 			if sess, err := c.gp.GetReplicationSessionByLocalResourceID(gctx, volID); err != nil {
@@ -276,9 +269,7 @@ func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []
 			} else {
 				r.transfer = deriveReplicationTransfer(c.name, topo, volID, "volume", rate)
 			}
-			mu.Lock()
-			results[i] = r
-			mu.Unlock()
+			results[i] = r // distinct index per goroutine — no lock needed
 			return nil
 		})
 	}
@@ -301,65 +292,50 @@ func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []
 // Called from BOTH export paths so bulk and per-entity stay at parity; it
 // complements the inventory-derived file-system capacity metrics.
 func (c *ArrayClient) fileSystemPerf(ctx context.Context, topo *Topology) []Sample {
-	if len(topo.FileSystems) == 0 {
-		return nil
-	}
-	perFS := make([][]Sample, len(topo.FileSystems))
-	var mu sync.Mutex
-	g, gctx := errgroup.WithContext(ctx)
-	for i, fs := range topo.FileSystems {
-		i, fs := i, fs
-		g.Go(func() error {
-			resp, err := c.gp.PerformanceMetricsByFileSystem(gctx, fs.ID, c.interval)
-			if err != nil {
-				logging.LogWarn(fmt.Sprintf("array %q: file system %s perf failed: %v", c.name, fs.ID, err))
-				return nil
-			}
-			s := deriveFileSystemPerf(c.name, topo, fs, resp)
-			mu.Lock()
-			perFS[i] = s
-			mu.Unlock()
+	return parallelSamples(ctx, topo.FileSystems, func(ctx context.Context, fs gopowerstore.FileSystem) []Sample {
+		resp, err := c.gp.PerformanceMetricsByFileSystem(ctx, fs.ID, c.interval)
+		if err != nil {
+			logging.LogWarn(fmt.Sprintf("array %q: file system %s perf failed: %v", c.name, fs.ID, err))
 			return nil
-		})
-	}
-	_ = g.Wait()
-
-	var samples []Sample
-	for _, s := range perFS {
-		samples = append(samples, s...)
-	}
-	return samples
+		}
+		return deriveFileSystemPerf(c.name, topo, fs, resp)
+	})
 }
 
 // volumeGroupPerf collects live per-volume-group performance via the typed
 // PerformanceMetricsByVg method, one call per volume group, failures logged and
 // skipped. Called from both export paths for parity.
 func (c *ArrayClient) volumeGroupPerf(ctx context.Context, topo *Topology) []Sample {
-	if len(topo.VolumeGroups) == 0 {
+	return parallelSamples(ctx, topo.VolumeGroups, func(ctx context.Context, vg gopowerstore.VolumeGroup) []Sample {
+		resp, err := c.gp.PerformanceMetricsByVg(ctx, vg.ID, c.interval)
+		if err != nil {
+			logging.LogWarn(fmt.Sprintf("array %q: volume group %s perf failed: %v", c.name, vg.ID, err))
+			return nil
+		}
+		return deriveVolumeGroupPerf(c.name, topo, vg, resp)
+	})
+}
+
+// parallelSamples fans fn out across items concurrently and concatenates the
+// per-item samples in item order. Each goroutine writes its own slot, so the
+// collection needs no locking. Per-item failures are the callback's concern
+// (return nil to contribute nothing).
+func parallelSamples[T any](ctx context.Context, items []T, fn func(context.Context, T) []Sample) []Sample {
+	if len(items) == 0 {
 		return nil
 	}
-	perVG := make([][]Sample, len(topo.VolumeGroups))
-	var mu sync.Mutex
+	per := make([][]Sample, len(items))
 	g, gctx := errgroup.WithContext(ctx)
-	for i, vg := range topo.VolumeGroups {
-		i, vg := i, vg
+	for i, item := range items {
 		g.Go(func() error {
-			resp, err := c.gp.PerformanceMetricsByVg(gctx, vg.ID, c.interval)
-			if err != nil {
-				logging.LogWarn(fmt.Sprintf("array %q: volume group %s perf failed: %v", c.name, vg.ID, err))
-				return nil
-			}
-			s := deriveVolumeGroupPerf(c.name, topo, vg, resp)
-			mu.Lock()
-			perVG[i] = s
-			mu.Unlock()
+			per[i] = fn(gctx, item)
 			return nil
 		})
 	}
 	_ = g.Wait()
 
 	var samples []Sample
-	for _, s := range perVG {
+	for _, s := range per {
 		samples = append(samples, s...)
 	}
 	return samples
@@ -455,9 +431,18 @@ func (c *ArrayClient) BulkMetrics(ctx context.Context, topo *Topology) ([]Sample
 	samples = append(samples, deriveBulkAppliancePerf(c.name, topo, files["performance_metrics_by_appliance.csv"])...)
 	samples = append(samples, deriveBulkApplianceSpace(c.name, topo, files["space_metrics_by_appliance.csv"])...)
 	samples = append(samples, deriveBulkVolumePerf(c.name, topo, files["performance_metrics_by_volume.csv"])...)
-	// File-system capacity, port link status, and alerts are topology-derived (no
-	// extra API call here — alerts were fetched in GetTopology), so emit them on
-	// the bulk path too for parity with per-entity.
+	samples = append(samples, c.commonMetrics(ctx, topo)...)
+	return samples, nil
+}
+
+// commonMetrics returns the metrics emitted identically on BOTH the bulk and
+// per-entity export paths. Centralizing them here keeps the two paths at metric
+// parity structurally rather than by convention — add a shared metric here once
+// and both paths pick it up. deriveFileSystemCapacity, derivePortLinkStatus, and
+// deriveAlerts are topology-derived (no extra API call here — alerts were fetched
+// in GetTopology); the rest issue their own typed/generic calls.
+func (c *ArrayClient) commonMetrics(ctx context.Context, topo *Topology) []Sample {
+	var samples []Sample
 	samples = append(samples, deriveFileSystemCapacity(c.name, topo)...)
 	samples = append(samples, derivePortLinkStatus(c.name, topo)...)
 	samples = append(samples, deriveAlerts(c.name, topo)...)
@@ -466,7 +451,7 @@ func (c *ArrayClient) BulkMetrics(ctx context.Context, topo *Topology) ([]Sample
 	samples = append(samples, c.volumeGroupPerf(ctx, topo)...)
 	samples = append(samples, c.clusterSpace(ctx, topo)...)
 	samples = append(samples, c.driveMetrics(ctx, topo)...)
-	return samples, nil
+	return samples
 }
 
 // Close releases client resources. gopowerstore has no explicit close, so this
