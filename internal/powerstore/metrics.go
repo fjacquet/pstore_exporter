@@ -82,6 +82,15 @@ func driveLabels(arrayName, clusterID, driveID, driveName, applianceID string) [
 	)
 }
 
+// driveStateLabels builds the drive label set plus the lifecycle-state label for
+// the drive info series, keeping the full series definition in one place rather
+// than appending the state label at the emission site.
+func driveStateLabels(arrayName, clusterID, driveID, driveName, applianceID, state string) []Label {
+	return append(driveLabels(arrayName, clusterID, driveID, driveName, applianceID),
+		Label{"state", state},
+	)
+}
+
 // volumeGroupLabels builds the canonical volume-group label set.
 func volumeGroupLabels(arrayName, clusterID, vgName, vgID string) []Label {
 	return append(baseLabels(arrayName, clusterID),

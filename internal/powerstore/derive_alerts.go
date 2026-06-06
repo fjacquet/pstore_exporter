@@ -17,24 +17,29 @@ var knownAlertSeverities = []string{"Critical", "Major", "Minor", "Info", "None"
 func deriveAlerts(array string, topo *Topology) []Sample {
 	clusterID := topo.ClusterID()
 
-	counts := make(map[string]int, len(knownAlertSeverities))
-	for _, sev := range knownAlertSeverities {
-		counts[sev] = 0 // seed stable zero series
-	}
+	counts := make(map[string]int)
 	for _, a := range topo.Alerts {
 		// Only ACTIVE alerts count; CLEARED ones have been resolved. The metric
 		// name (_active) reflects this filter.
-		if !strings.EqualFold(a.State, "ACTIVE") {
-			continue
+		if strings.EqualFold(a.State, "ACTIVE") {
+			counts[a.Severity]++
 		}
-		// Unknown/unexpected severities still surface as their own series rather
-		// than being silently dropped.
-		counts[a.Severity]++
 	}
 
-	out := make([]Sample, 0, len(counts))
+	// Emit the known severities first, in a fixed order and with a zero count
+	// when absent, so the series are stable and the output is deterministic. Any
+	// unexpected severity then surfaces as its own series rather than being
+	// silently dropped.
+	out := make([]Sample, 0, len(knownAlertSeverities)+len(counts))
+	known := make(map[string]struct{}, len(knownAlertSeverities))
+	for _, sev := range knownAlertSeverities {
+		known[sev] = struct{}{}
+		out = append(out, Sample{"powerstore_alert_active", alertLabels(array, clusterID, sev), float64(counts[sev])})
+	}
 	for sev, n := range counts {
-		out = append(out, Sample{"powerstore_alert_active", alertLabels(array, clusterID, sev), float64(n)})
+		if _, ok := known[sev]; !ok {
+			out = append(out, Sample{"powerstore_alert_active", alertLabels(array, clusterID, sev), float64(n)})
+		}
 	}
 	return out
 }
