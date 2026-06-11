@@ -1,20 +1,33 @@
-/bin/
-/log/
-/vendor/
+# Build artifacts
+bin/
+dist/
+vendor/
 coverage.out
 coverage.html
-clusters.yaml
+/pstore_exporter
+
+# Logs
+log/
+*.log
+
+# Docs build (mkdocs)
+site/
+
+# Local config & secrets — never commit
+.env
 *.local.yaml
 .claude.local.md
+.claude/settings.local.json
 
-# MkDocs build output
-/site/
+# Editor / OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
 
-# GoReleaser output
-/dist/
+# Local tooling state
+.rtk/
 
-# RTK local tooling state
-/.rtk/
-
-# Local secrets — never commit
-.env
+# Repo-specific
+clusters.yaml
