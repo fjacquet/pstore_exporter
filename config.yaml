@@ -21,9 +21,12 @@ opentelemetry:
     samplingRate: 0.1
 
 arrays:
+  # Single-array quickstart: set PSTORE1_HOSTNAME, PSTORE1_USERNAME, PSTORE1_PASSWORD
+  # in the environment (or a .env file) and the values below expand automatically.
+  # For multiple arrays use literal values or add your own ${PSTORE2_HOSTNAME} refs.
   - name: pstore-1
-    endpoint: "https://10.0.0.1/api/rest"
-    username: admin
+    endpoint: "https://${PSTORE1_HOSTNAME}/api/rest"
+    username: "${PSTORE1_USERNAME}"
     password: "${PSTORE1_PASSWORD}"
     insecureSkipVerify: true
     # interval: Five_Mins

@@ -48,3 +48,29 @@ func TestResolveSecretsInterpolatesAndLoadsFile(t *testing.T) {
 		t.Errorf("file password = %q (want trimmed 'filepass')", cfg.Arrays[1].Password)
 	}
 }
+
+func TestResolveSecretsExpandsUsername(t *testing.T) {
+	t.Setenv("PSTORE1_USERNAME", "monitor")
+	t.Setenv("PSTORE1_PASSWORD", "secret")
+
+	cfg := &models.Config{Arrays: []models.ArrayConfig{
+		{Name: "pstore-1", Endpoint: "https://10.0.0.1/api/rest", Username: "${PSTORE1_USERNAME}", Password: "${PSTORE1_PASSWORD}"},
+	}}
+
+	if err := ResolveSecrets(cfg); err != nil {
+		t.Fatalf("ResolveSecrets: %v", err)
+	}
+	if cfg.Arrays[0].Username != "monitor" {
+		t.Errorf("username = %q, want %q", cfg.Arrays[0].Username, "monitor")
+	}
+}
+
+func TestResolveSecretsUnsetUsernameFails(t *testing.T) {
+	cfg := &models.Config{Arrays: []models.ArrayConfig{
+		{Name: "pstore-1", Endpoint: "https://10.0.0.1/api/rest", Username: "${PSTORE1_USERNAME_DEFINITELY_UNSET}", Password: "pw"},
+	}}
+
+	if err := ResolveSecrets(cfg); err == nil {
+		t.Error("expected error for unset username variable, got nil")
+	}
+}

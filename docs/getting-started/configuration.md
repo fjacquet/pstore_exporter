@@ -27,8 +27,8 @@ opentelemetry:
 
 arrays:
   - name: pstore-1
-    endpoint: "https://<ip-or-host>/api/rest"  # PowerStore management IP or FQDN
-    username: admin
+    endpoint: "https://${PSTORE1_HOSTNAME}/api/rest"  # PowerStore management IP or FQDN
+    username: "${PSTORE1_USERNAME}"
     password: "${PSTORE1_PASSWORD}"
     insecureSkipVerify: true
     # interval: Five_Mins   # optional: override the stats interval on the PowerStore side
@@ -47,6 +47,22 @@ arrays:
 | `arrays[]` | `name` | Unique; becomes the `array` label/attribute on every metric. |
 | `arrays[]` | `endpoint` | Full URL to the PowerStore REST API, e.g. `https://10.0.0.1/api/rest`. |
 | `arrays[]` | `username`, `password` | Credentials. `insecureSkipVerify` accepts self-signed management certificates. |
+
+## Environment variables / .env
+
+`${ENV_VAR}` references in `endpoint`, `username`, and `password` are expanded at
+config load; an unset variable fails startup loudly instead of silently
+authenticating with an empty value. `passwordFile` is still supported.
+
+The `PSTORE1_*` variables wired into `docker-compose.yml` (with literal defaults)
+are a quickstart convenience for **exactly one array** — that's what the `1`
+means. Copy `.env.example` to `.env` (gitignored; Compose reads it natively) and
+set `PSTORE1_HOSTNAME`, `PSTORE1_USERNAME`, `PSTORE1_PASSWORD`.
+
+`config.yaml` remains the source of truth and is always consumed. For multiple
+arrays, add one `arrays[]` entry per array — with literal values, or with your own
+additional env refs (e.g. `${PSTORE2_HOSTNAME}`) that you must also pass through
+in your compose `environment:` block.
 
 ## Multi-array
 

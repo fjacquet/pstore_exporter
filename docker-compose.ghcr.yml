@@ -17,7 +17,9 @@ services:
       # Persist the log file (config.yaml -> logName). Owned by uid 10001 via the image.
       - pstore_logs:/var/log/pstore_exporter
     environment:
-      # Provide array secrets via the environment (referenced as ${PSTORE1_PASSWORD}).
+      # Provide array connection details via the environment (referenced in config.yaml).
+      - PSTORE1_HOSTNAME=${PSTORE1_HOSTNAME:-10.0.0.1}
+      - PSTORE1_USERNAME=${PSTORE1_USERNAME:-admin}
       - PSTORE1_PASSWORD=${PSTORE1_PASSWORD:-}
     restart: unless-stopped
 

@@ -31,7 +31,7 @@ func ExpandEnv(s string) (string, error) {
 	return out, nil
 }
 
-// ResolveSecrets expands ${ENV} references in array endpoint/password fields and
+// ResolveSecrets expands ${ENV} references in array endpoint/username/password fields and
 // loads passwords from passwordFile when set. Mutates cfg in place.
 func ResolveSecrets(cfg *models.Config) error {
 	for i := range cfg.Arrays {
@@ -42,6 +42,12 @@ func ResolveSecrets(cfg *models.Config) error {
 			return fmt.Errorf("array %q endpoint: %w", a.Name, err)
 		}
 		a.Endpoint = endpoint
+
+		username, err := ExpandEnv(a.Username)
+		if err != nil {
+			return fmt.Errorf("array %q username: %w", a.Name, err)
+		}
+		a.Username = username
 
 		if a.Password == "" && a.PasswordFile != "" {
 			data, err := os.ReadFile(a.PasswordFile)
