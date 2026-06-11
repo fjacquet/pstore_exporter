@@ -3,7 +3,7 @@
 //
 // Usage:
 //
-//	pstore_exporter --config config.yaml [--debug] [--once]
+//	pstore_exporter --config config.yaml [--debug] [--once] [--trace]
 package main
 
 import (
@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -44,6 +46,10 @@ var (
 	configFile string
 	debug      bool
 	once       bool
+	// traceAPI backs --trace ("trace" the name would shadow the otel trace
+	// import). It is read by buildClients on startup AND on every config
+	// reload, so the tracing transport survives client-pool rebuilds.
+	traceAPI bool
 )
 
 // Server owns the HTTP server, the snapshot store, the collection loop, the per-array
@@ -232,7 +238,7 @@ func (s *Server) initOTLP(cfg *models.Config) error {
 func buildClients(cfg *models.Config) ([]powerstore.Client, error) {
 	clients := make([]powerstore.Client, 0, len(cfg.Arrays))
 	for _, a := range cfg.Arrays {
-		client, err := powerstore.NewArrayClient(a)
+		client, err := powerstore.NewArrayClient(a, traceAPI)
 		if err != nil {
 			log.Warnf("array %q: failed to create client, skipping: %v", a.Name, err)
 			continue
@@ -243,6 +249,27 @@ func buildClients(cfg *models.Config) ([]powerstore.Client, error) {
 		return nil, errors.New("no usable array clients could be created from configuration")
 	}
 	return clients, nil
+}
+
+// dumpSamples prints every collected sample in Prometheus exposition style,
+// sorted, so a `--once --debug` run against a live array can be diffed against
+// docs/metrics.md to spot silently-absent metrics. Samples go to stdout as
+// plain lines (`powerstore_...`), distinguishable from the JSON log records.
+func dumpSamples(snap *powerstore.Snapshot) {
+	var lines []string
+	for _, as := range snap.PerArray {
+		for _, s := range as.Samples {
+			parts := make([]string, 0, len(s.Labels))
+			for _, l := range s.Labels {
+				parts = append(parts, fmt.Sprintf("%s=%q", l.Name, l.Value))
+			}
+			lines = append(lines, fmt.Sprintf("%s{%s} %v", s.Name, strings.Join(parts, ","), s.Value))
+		}
+	}
+	sort.Strings(lines)
+	for _, l := range lines {
+		fmt.Println(l)
+	}
 }
 
 // ErrorChan returns the channel that receives fatal HTTP server errors.
@@ -433,6 +460,9 @@ func main() {
 			}
 
 			if once {
+				if debug {
+					dumpSamples(server.store.Load())
+				}
 				log.Info("--once: single collection cycle complete, exiting")
 				return server.Shutdown()
 			}
@@ -454,6 +484,9 @@ func main() {
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "Path to configuration file (required)")
 	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug mode")
 	rootCmd.PersistentFlags().BoolVar(&once, "once", false, "Run a single collection cycle and exit")
+	rootCmd.PersistentFlags().BoolVar(&traceAPI, "trace", false,
+		"Log raw bulk-API response bodies (method/URL/status + body; headers are never logged). "+
+			"Typed gopowerstore calls cannot be traced (no transport seam in the SDK). Very verbose.")
 	_ = rootCmd.MarkPersistentFlagRequired("config")
 
 	if err := rootCmd.Execute(); err != nil {

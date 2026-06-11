@@ -34,13 +34,18 @@ type ArrayClient struct {
 	// self-signed certificates, so disabling verification is an operator-chosen,
 	// per-array setting (logged on startup) rather than a hardcoded default.
 	insecure bool
+	// trace enables response-body logging (--trace) on the raw bulk HTTP path.
+	// The typed gopowerstore path cannot be traced: the SDK builds its
+	// *http.Client internally with no transport-injection seam (v1.22.0).
+	trace bool
 }
 
 // Compile-time assertion that ArrayClient satisfies Client.
 var _ Client = (*ArrayClient)(nil)
 
-// NewArrayClient constructs an ArrayClient from an array configuration.
-func NewArrayClient(cfg models.ArrayConfig) (*ArrayClient, error) {
+// NewArrayClient constructs an ArrayClient from an array configuration. trace
+// enables raw bulk-API response-body logging (see tracingRoundTripper).
+func NewArrayClient(cfg models.ArrayConfig, trace bool) (*ArrayClient, error) {
 	if cfg.InsecureSkipVerify {
 		logging.LogWarn(fmt.Sprintf("array %q: InsecureSkipVerify is enabled; TLS certificate verification is disabled", cfg.Name))
 	}
@@ -62,6 +67,7 @@ func NewArrayClient(cfg models.ArrayConfig) (*ArrayClient, error) {
 		username: cfg.Username,
 		password: cfg.Password,
 		insecure: cfg.InsecureSkipVerify,
+		trace:    trace,
 	}, nil
 }
 

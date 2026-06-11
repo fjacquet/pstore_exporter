@@ -36,17 +36,23 @@ const bulkHTTPTimeout = 90 * time.Second
 // (which return a binary archive) are reached with a dedicated *http.Client.
 func (c *ArrayClient) downloadBulkArchive(ctx context.Context) ([]byte, error) {
 	base := strings.TrimRight(c.endpoint, "/") + "/"
-	httpClient := &http.Client{
-		Timeout: bulkHTTPTimeout,
-		Transport: &http.Transport{
-			// PowerStore arrays typically present self-signed certificates.
-			// Verification is governed by the operator-set per-array
-			// InsecureSkipVerify config (logged at startup), not hardcoded.
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: c.insecure,
-				MinVersion:         tls.VersionTLS12,
-			},
+	var transport http.RoundTripper = &http.Transport{
+		// PowerStore arrays typically present self-signed certificates.
+		// Verification is governed by the operator-set per-array
+		// InsecureSkipVerify config (logged at startup), not hardcoded.
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: c.insecure,
+			MinVersion:         tls.VersionTLS12,
 		},
+	}
+	if c.trace {
+		// --trace: log method/URL/status + body of each bulk-API response
+		// (headers are never logged — they carry the credentials).
+		transport = newTracingRoundTripper(c.name, transport)
+	}
+	httpClient := &http.Client{
+		Timeout:   bulkHTTPTimeout,
+		Transport: transport,
 	}
 
 	if err := c.bulkEnable(ctx, httpClient, base); err != nil {

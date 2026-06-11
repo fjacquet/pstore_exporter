@@ -11,6 +11,10 @@ make test-race    # go test -race + coverage
 make ci           # full gate: fmt-check, vet, lint, test -race, vuln (run before pushing)
 make sure         # fmt + vet + test + build + lint (local dev loop)
 PSTORE1_PASSWORD=x ./bin/pstore_exporter --config config.yaml --once   # one cycle, no server
+PSTORE1_PASSWORD=x ./bin/pstore_exporter --config config.yaml --once --debug --trace
+#   --once --debug also dumps every collected sample (sorted, exposition style) to stdout;
+#   --trace logs raw bulk-API response bodies (method/URL/status + body; headers NEVER —
+#   Basic auth + DELL-EMC-TOKEN live there; login_session responses skipped)
 docker compose up # exporter:9101 + Prometheus:9090 + Grafana:3000 + otel-collector
 make release-snapshot # local goreleaser dry-run: archives + SBOM, no publish/sign/push
 ```
@@ -35,7 +39,10 @@ Decisions are recorded in `docs/adr/`; metric catalog in `docs/metrics.md`.
 - **gopowerstore v1.22 limits:** no list-appliances method (enumerate distinct IDs from
   volumes+ports → `GetAppliance`); no version field on appliances (use
   `GetSoftwareMajorMinorVersion` for bulk capability ≥4.1); no drive-list method (enumerate
-  via generic `APIClient().Query`). NOTE: `PerformanceMetricsByFileSystem` **does** exist in
+  via generic `APIClient().Query`); no custom `*http.Client`/RoundTripper injection
+  (`api.New` builds its own client; `ClientOptions` has no transport seam) — so `--trace`
+  (`trace_transport.go`) covers only the repo-owned raw bulk HTTP path, never typed SDK
+  calls. NOTE: `PerformanceMetricsByFileSystem` **does** exist in
   v1.22 — ADR-0003's "no FS perf" note is stale (superseded by ADR-0009). Live FS performance
   is now collected (`derive_filesystem_perf.go`) alongside inventory-derived FS capacity. See
   `docs/adr/0003`, `docs/adr/0009`, and `docs/reconciliation-2026-06-05.md`.

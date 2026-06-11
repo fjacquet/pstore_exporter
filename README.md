@@ -131,6 +131,19 @@ make sure          # fmt + vet + test + build + golangci-lint
 make ci            # the gate CI runs (adds go test -race + govulncheck)
 ```
 
+Validating against a live array — `--once --debug` dumps every collected sample (sorted,
+exposition style) and `--trace` logs raw bulk-API response bodies (method/URL/status +
+payload; headers — and thus credentials and the `DELL-EMC-TOKEN` — are never logged):
+
+```bash
+./bin/pstore_exporter --config config.yaml --once --debug --trace > run.log
+grep '^powerstore_' run.log | sort > samples.txt   # diff against docs/metrics.md
+grep 'API trace' run.log                           # raw bulk-API payloads
+```
+
+Note: `--trace` covers only the raw bulk-CSV HTTP path; gopowerstore offers no
+transport hook for its typed calls.
+
 ## Notes
 
 - IOPS and bandwidth are already per-second gauges — aggregate with `sum`/`avg` in PromQL,

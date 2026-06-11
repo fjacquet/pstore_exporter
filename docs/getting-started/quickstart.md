@@ -25,6 +25,31 @@ expected metrics are produced, without starting the server loop:
 ./bin/pstore_exporter --config config.yaml --once --debug
 ```
 
+Useful flags:
+
+- `--once` — run a single collection cycle, log the result, and exit (connectivity check).
+- `--debug` — verbose logging. Combined with `--once`, it also prints **every collected
+  sample** (sorted, exposition style) so you can diff a live array against the
+  [metrics reference](../metrics.md).
+- `--trace` — log raw bulk-API response bodies (method, URL, status, payload). Headers are
+  **never** logged, so the Basic-auth credentials and the `DELL-EMC-TOKEN` CSRF token
+  cannot leak; `login_session` responses are skipped entirely. Scope: only the raw
+  bulk-CSV HTTP path (`latest_five_min_metrics`) is traced — gopowerstore builds its HTTP
+  client internally with no transport hook, so typed SDK calls cannot be traced.
+
+Validating against a real array:
+
+```bash
+./bin/pstore_exporter --config config.yaml --once --debug --trace > run.log
+grep '^powerstore_' run.log | sort > samples.txt   # every collected sample (compare with docs/metrics.md)
+grep 'API trace' run.log                           # raw bulk-API payloads for anything missing or suspicious
+```
+
+Sample lines start with `powerstore_`, while log records are JSON objects, so the two are
+easy to separate even though both go to stdout. The exporter never guesses values: an
+unexpected payload shape shows up as a *missing* sample, and the trace shows what the
+array actually returned.
+
 ## Local stack (Docker Compose)
 
 Bring up the exporter alongside Prometheus, Grafana (dashboards auto-provisioned), and an
