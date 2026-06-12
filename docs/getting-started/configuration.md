@@ -54,6 +54,15 @@ arrays:
 config load; an unset variable fails startup loudly instead of silently
 authenticating with an empty value. `passwordFile` is still supported.
 
+### .env loading
+
+The `pstore_exporter` binary loads a `.env` file natively at startup — from the
+working directory first, then next to the config file — so `cp .env.example .env`
+works for bare-metal and systemd runs exactly like it does under docker compose.
+Already-set environment variables **always take precedence** over `.env` values,
+so secret injection (systemd `Environment=`, Kubernetes secrets, CI) can never be
+shadowed by a stray file.
+
 The `PSTORE1_*` variables wired into `docker-compose.yml` (with literal defaults)
 are a quickstart convenience for **exactly one array** — that's what the `1`
 means. Copy `.env.example` to `.env` (gitignored; Compose reads it natively) and

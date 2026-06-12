@@ -441,6 +441,8 @@ func main() {
 		Short:   "Prometheus/OTLP exporter for Dell PowerStore",
 		Long:    "PowerStore Exporter collects metrics from Dell PowerStore arrays and exposes them via Prometheus and OTLP.",
 		RunE: func(_ *cobra.Command, _ []string) error {
+			utils.LoadDotEnv(configFile)
+
 			cfg, err := validateConfig(configFile)
 			if err != nil {
 				return err
