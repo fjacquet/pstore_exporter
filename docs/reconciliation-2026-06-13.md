@@ -203,7 +203,23 @@ with `transfer_rate`/`data_transferred`, not these). So the transfer rows are
 
 ## Pass 3 — Capability-gate audit
 
-_(Task 3)_
+Intro: some exporter "limits" are **gopowerstore-SDK constraints** (the v1.22 client
+lacks a method), **not 4.4.0 REST API constraints** (the underlying path exists). This
+distinction matters: SDK limits are worked around in-process (enumerate / generic
+`Query`), whereas a true API gap would require a spec/firmware change. Each row below
+marks which kind it is. Note also that the OpenAPI document is a **single 4.4.0.0
+snapshot** (`info.version` = `4.4.0.0`); it advertises *presence* of paths but contains
+no per-version capability matrix, so it cannot prove a 4.0-vs-4.1 boundary — only that
+4.4.0 has the feature.
+
+| Assumption (source) | Still true at 4.4.0? | Evidence |
+| --- | --- | --- |
+| Bulk CSV path gated on PowerStoreOS ≥4.1 via `GetSoftwareMajorMinorVersion` (`internal/powerstore/capability.go:10-16`; CLAUDE.md) | ✅ present at 4.4.0 — gate **satisfied** here, but boundary **not provable** from this spec | `paths` lists `/latest_five_min_metrics/enable [post]` and `/latest_five_min_metrics/download [post]`; `info.version` = `4.4.0.0` (≥4.1, so the gate passes). The 4.0/4.1 boundary is a **runtime software-version check**, not modeled in the OpenAPI doc — this 4.4.0-only spec confirms presence, **not** the introduction version. |
+| ADR-0003 "no file-system performance available" (gopowerstore lacks FS perf) | ❌ **STALE — superseded by ADR-0009** | `entities` advertises FS perf entity types: `performance_metrics_by_file_system`, `space_metrics_by_file_system`, `performance_metrics_file_by_node`, `performance_metrics_file_by_appliance`, `performance_metrics_file_by_cluster`, `performance_metrics_by_nas_server`, `copy_metrics_by_file_system`, `copy_metrics_by_nas_server`. FS perf is now collected (`derive_filesystem_perf.go`); v1.22 `PerformanceMetricsByFileSystem` exists. |
+| No list-appliances method → enumerate IDs from volumes+ports, then `GetAppliance` (CLAUDE.md; gopowerstore v1.22) | ✅ true, but **SDK limit, not API limit** | The REST `/appliance` collection **exists** in 4.4.0 (confirmed in Pass 1). The workaround exists only because gopowerstore v1.22 exposes no list method, not because the API lacks one. |
+| No drive-list method → enumerate via generic `APIClient().Query` over `hardware` (CLAUDE.md; gopowerstore v1.22) | ✅ true, but **SDK limit, not API limit** | The REST `/hardware` path (type=Drive) **exists** in 4.4.0 (confirmed in Pass 1). Generic `Query` is an SDK-side workaround for the missing typed method. |
+| No list-replication-sessions typed enumeration helper → SDK reads `replication_session` inventory directly (CLAUDE.md; gopowerstore v1.22) | ✅ true, but **SDK limit, not API limit** | The REST `/replication_session` path **exists** in 4.4.0 (confirmed in Pass 1). Any enumeration shortfall is SDK-driven, not an API gap. |
+| No appliance version field → use `GetSoftwareMajorMinorVersion` (CLAUDE.md; gopowerstore v1.22) | ✅ true; software version sourced from a dedicated path, **SDK-shaped** | `appliance_instance` carries no software-version field, but `paths` exposes `/software_installed [get]` and `/software_installed/{id} [get]` — the array-wide software version the gate reads. |
 
 ## Pass 4 — Coverage map (all 55 entity types)
 
