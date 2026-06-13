@@ -21,7 +21,7 @@ _(Task 2)_
 
 _(Task 3)_
 
-## Pass 4 — Coverage map (all 56 entity types)
+## Pass 4 — Coverage map (all 55 entity types)
 
 _(Task 4)_
 

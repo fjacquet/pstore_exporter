@@ -21,7 +21,7 @@ this work** — the fix list feeds a separate implementation plan via `writing-p
 
 ## Scope
 
-- **Cover all 56 `/metrics/generate` entity types** (the full `MetricsEntityEnum`), not just
+- **Cover all 55 `/metrics/generate` entity types** (the full `MetricsEntityEnum`), not just
   the block/file/space families. Entities outside the exporter's purpose (import/migration,
   vSphere, SMB/NFS protocol-detail) are still catalogued in the coverage map, each with an
   explicit priority/skip tag and rationale — so the decision to skip is recorded, not implied.
@@ -60,7 +60,7 @@ tar archive returned by `/latest_five_min_metrics/download`. Consequences:
    advertises; confirm SDK methods assumed present/absent actually match (e.g.
    `PerformanceMetricsByFileSystem` exists — ADR-0003's "no FS perf" note is stale, already
    noted in CLAUDE.md/ADR-0009; record formally).
-4. **Coverage map** — all 56 entity types × {emitted | not} with priority tag
+4. **Coverage map** — all 55 entity types × {emitted | not} with priority tag
    (high / medium / skip) and one-line rationale each. Same treatment for notable per-entity
    fields in the families we already cover.
 
@@ -85,7 +85,7 @@ Recorded so they survive into execution:
 ## Deliverables
 
 1. `docs/reconciliation-2026-06-13.md` — findings per pass, mirroring the style of
-   `docs/reconciliation-2026-06-05.md`. Includes the full 56-entity coverage table.
+   `docs/reconciliation-2026-06-05.md`. Includes the full 55-entity coverage table.
 2. ADR touch-ups where assumptions are provably stale (e.g. formalize the ADR-0003
    supersession; new ADR only if the coverage strategy itself changes).
 3. A prioritized **fix list** feeding `writing-plans`, split into:

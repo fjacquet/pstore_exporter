@@ -69,7 +69,7 @@ if __name__ == '__main__':
 - [ ] **Step 2: Verify the parser works**
 
 Run: `cd /Users/fjacquet/Projects/pstore_exporter && python3 /tmp/specparse.py entities | wc -l`
-Expected: `56`
+Expected: `55`
 
 Run: `python3 /tmp/specparse.py fields base_performance_metrics_by_volume`
 Expected: includes `read_iops`, `write_iops`, `total_iops`, `avg_read_latency`, `volume_id`.
@@ -102,7 +102,7 @@ _(Task 2)_
 
 _(Task 3)_
 
-## Pass 4 — Coverage map (all 56 entity types)
+## Pass 4 — Coverage map (all 55 entity types)
 
 _(Task 4)_
 
@@ -261,19 +261,19 @@ rtk git commit -m "docs(reconciliation): pass 3 capability-gate audit"
 
 ---
 
-## Task 4: Pass 4 — Coverage map (all 56 entity types)
+## Task 4: Pass 4 — Coverage map (all 55 entity types)
 
 **Files:**
 - Modify: `docs/reconciliation-2026-06-13.md` (Pass 4 section)
 
-- [ ] **Step 1: List all 56 entity types and current emitted metrics**
+- [ ] **Step 1: List all 55 entity types and current emitted metrics**
 
 Run: `cd /Users/fjacquet/Projects/pstore_exporter && python3 /tmp/specparse.py entities`
 Run: `grep -rhoE 'powerstore_[a-z_]+' internal/powerstore/*.go | sort -u`
 
 - [ ] **Step 2: Classify every entity type**
 
-For each of the 56 entity types, decide emitted vs not, and assign a priority tag with a
+For each of the 55 entity types, decide emitted vs not, and assign a priority tag with a
 one-line rationale. Use these tags:
 - **emitted** — already collected (appliance/volume/cluster perf+space, FS perf+space, VG perf,
   drive wear, copy/replication).
@@ -290,8 +290,8 @@ one-line rationale. Use these tags:
 
 - [ ] **Step 3: Write the Pass 4 coverage table**
 
-Replace `_(Task 4)_` with a 56-row table: `Entity type | Status | Priority | Rationale`.
-Every one of the 56 enum values MUST appear exactly once.
+Replace `_(Task 4)_` with a 55-row table: `Entity type | Status | Priority | Rationale`.
+Every one of the 55 enum values MUST appear exactly once.
 
 - [ ] **Step 4: Verify completeness**
 
@@ -305,7 +305,7 @@ Expected: empty (every enum value is in the table).
 
 ```bash
 rtk git add docs/reconciliation-2026-06-13.md
-rtk git commit -m "docs(reconciliation): pass 4 full coverage map (56 entity types)"
+rtk git commit -m "docs(reconciliation): pass 4 full coverage map (55 entity types)"
 ```
 
 ---
@@ -369,7 +369,7 @@ Run: `cd /Users/fjacquet/Projects/pstore_exporter && cat docs/reconciliation-202
 Check: no `_(Task N)_` placeholders remain; all four passes + fix list are populated; every
 table verdict cites evidence.
 
-- [ ] **Step 2: Confirm the 56-entity invariant once more**
+- [ ] **Step 2: Confirm the 55-entity invariant once more**
 
 Re-run Task 4 Step 4. Expected: empty diff.
 
@@ -391,7 +391,7 @@ rtk git commit -m "docs(reconciliation): final review + index linkage"
 ## Done criteria
 
 - `docs/reconciliation-2026-06-13.md` has all four passes + a two-part fix list, no placeholders.
-- The Pass 4 table contains all 56 entity types exactly once (verified by `comm`).
+- The Pass 4 table contains all 55 entity types exactly once (verified by `comm`).
 - ADR-0003 stale note formalized.
 - Every fix-list row traces to an upstream finding.
 - No product code (`internal/`, `main.go`) modified by this plan.
