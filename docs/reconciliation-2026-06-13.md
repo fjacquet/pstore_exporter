@@ -223,7 +223,65 @@ no per-version capability matrix, so it cannot prove a 4.0-vs-4.1 boundary — o
 
 ## Pass 4 — Coverage map (all 55 entity types)
 
-_(Task 4)_
+Legend — **Status**: `emitted` = a powerstore_ metric family already covers it; `not collected` = no metric emitted today. **Priority**: `—` (emitted, n/a); `high` = fits the block+file ops-monitoring purpose, clear value, collect next; `medium` = useful but niche / high-cardinality, collect later; `skip` = outside purpose (vSphere/VM analytics, per-protocol dialect deep-dive, or deprecated/redundant). All 55 `MetricsEntityEnum` values appear once, in spec order.
+
+| Entity type | Status | Priority | Rationale |
+|---|---|---|---|
+| `performance_metrics_by_appliance` | emitted | — | Appliance perf family (`powerstore_appliance_*_iops/bandwidth/latency`, CPU util) already collected. |
+| `performance_metrics_by_node` | not collected | medium | Per-node perf adds intra-appliance balance insight but doubles cardinality; appliance roll-up suffices for most ops dashboards. |
+| `performance_metrics_by_volume` | emitted | — | Volume perf family (`powerstore_volume_*_iops/bandwidth/latency`) already collected. |
+| `performance_metrics_by_cluster` | not collected | medium | Cluster-wide perf is derivable by `sum`/`avg` over appliance series in PromQL; native entity is convenience, not new signal. |
+| `performance_metrics_by_vm` | not collected | skip | VM-level analytics is outside the block+file storage monitoring purpose. |
+| `performance_metrics_by_vg` | emitted | — | Volume-group perf family (`powerstore_volume_group_*`) already collected. |
+| `performance_metrics_by_fe_fc_port` | not collected | high | Front-end FC port perf is core SAN ops signal (host-facing throughput/latency, congestion); fits purpose, not yet collected. |
+| `performance_metrics_by_fe_eth_port` | not collected | high | Front-end Ethernet port perf is core iSCSI/NVMe-TCP host-facing signal; fits purpose, not yet collected. |
+| `performance_metrics_by_fe_eth_node` | not collected | high | Per-node FE Ethernet aggregate complements per-port view for node-level front-end load; clear ops value. |
+| `performance_metrics_by_fe_fc_node` | not collected | high | Per-node FE FC aggregate complements per-port view for node-level front-end load; clear ops value. |
+| `wear_metrics_by_drive` | not collected | skip | Deprecated since 2.0.0.0 (`x-deprecated_value`), superseded by `wear_metrics_by_drive_daily`; drive wear is already derived from inventory (`hardware_extra_details_instance.drive_wear_level` → `powerstore_drive_wear_level_ratio`). |
+| `wear_metrics_by_drive_daily` | not collected | skip | Drive wear already covered via inventory (`powerstore_drive_wear_level_ratio`); this daily-cadence metrics entity is redundant with the inventory-derived gauge. |
+| `space_metrics_by_cluster` | emitted | — | Cluster space family (`powerstore_cluster_*_bytes`, reduction/efficiency ratios) already collected. |
+| `space_metrics_by_appliance` | emitted | — | Appliance space family (`powerstore_appliance_*_bytes`, savings/efficiency ratios) already collected. |
+| `space_metrics_by_volume` | not collected | high | Per-volume capacity/efficiency is a primary block-storage capacity-planning signal; fits purpose, not yet collected. |
+| `space_metrics_by_volume_family` | not collected | high | Volume-family space rolls snapshots+clones to the source volume — true consumed capacity for thin/snap planning; fits purpose. |
+| `space_metrics_by_vm` | not collected | skip | VM-level space is VM analytics, outside the block+file storage purpose. |
+| `space_metrics_by_storage_container` | not collected | medium | Storage-container (vVol datastore) space is useful where vVols are used, but niche for a block+file ops exporter. |
+| `space_metrics_by_vg` | not collected | high | Per-volume-group capacity complements emitted vg perf; clear consistency-group capacity-planning value. |
+| `copy_metrics_by_appliance` | not collected | medium | Replication/copy throughput per appliance is useful but coarse; session-level health (already via SDK cma_view) is the priority slice. |
+| `copy_metrics_by_cluster` | not collected | medium | Cluster-wide copy roll-up derivable from finer copy series; convenience, not new signal. |
+| `copy_metrics_by_vg` | not collected | medium | Per-vg copy stats niche; relevant only for group-replicated consistency groups. |
+| `copy_metrics_by_rg` | not collected | medium | Per-replication-group copy stats niche; applies to NAS/group replication topologies only. |
+| `copy_metrics_by_remote_system` | not collected | high | Copy throughput per remote system is a key DR-link health signal (per-peer transfer); fits ops/replication monitoring. |
+| `copy_metrics_by_replication_session` | not collected | high | Per-session copy metrics are the core replication-health signal (RPO compliance, transfer progress); complements emitted SDK-derived `powerstore_replication_*`. |
+| `copy_metrics_by_volume` | not collected | medium | Per-volume copy stats overlap with session-level health; useful but secondary. |
+| `performance_metrics_by_file_system` | emitted | — | File-system perf family (`powerstore_file_system_*_iops/bandwidth/latency`) already collected (`derive_filesystem_perf.go`). |
+| `performance_metrics_smb_by_node` | not collected | skip | Per-protocol SMB dialect deep-dive is outside the exporter's purpose. |
+| `performance_metrics_smb_builtinclient_by_node` | not collected | skip | SMB built-in-client protocol detail; per-protocol deep-dive, out of scope. |
+| `performance_metrics_smb_branch_cache_by_node` | not collected | skip | SMB BranchCache protocol detail; per-protocol deep-dive, out of scope. |
+| `performance_metrics_smb1_by_node` | not collected | skip | SMB1 dialect detail; per-protocol deep-dive, out of scope. |
+| `performance_metrics_smb1_builtinclient_by_node` | not collected | skip | SMB1 built-in-client detail; per-protocol deep-dive, out of scope. |
+| `performance_metrics_smb2_by_node` | not collected | skip | SMB2 dialect detail; per-protocol deep-dive, out of scope. |
+| `performance_metrics_smb2_builtinclient_by_node` | not collected | skip | SMB2 built-in-client detail; per-protocol deep-dive, out of scope. |
+| `performance_metrics_nfs_by_node` | not collected | skip | Per-protocol NFS deep-dive is outside the exporter's purpose. |
+| `performance_metrics_nfsv3_by_node` | not collected | skip | NFSv3 dialect detail; per-protocol deep-dive, out of scope. |
+| `performance_metrics_nfsv4_by_node` | not collected | skip | NFSv4 dialect detail; per-protocol deep-dive, out of scope. |
+| `performance_metrics_file_by_node` | not collected | skip | Per-node aggregate file protocol perf; node-granularity dialect detail, out of scope (file perf covered per-filesystem). |
+| `performance_metrics_file_by_appliance` | not collected | medium | Appliance-level aggregate file perf could complement per-filesystem view, but is reconstructable by summing FS series in PromQL. |
+| `performance_metrics_file_by_cluster` | not collected | medium | Cluster-level aggregate file perf is derivable from per-filesystem series; convenience, not new signal. |
+| `performance_metrics_by_ip_port` | not collected | medium | IP-port perf overlaps with FE Ethernet port metrics; useful but high-cardinality and partly redundant. |
+| `performance_metrics_by_ip_port_iscsi` | not collected | medium | iSCSI IP-port perf is niche, high-cardinality; relevant only on iSCSI-heavy deployments. |
+| `performance_metrics_by_nas_server` | not collected | high | NAS-server perf is the top-level file-serving entity (per-tenant throughput/latency); core file-ops signal, fits purpose. |
+| `space_metrics_by_file_system` | emitted | — | File-system capacity (`powerstore_file_system_size_total/used_bytes`) already collected (inventory-derived). |
+| `performance_metrics_by_initiator` | not collected | high | Per-initiator perf gives host-port-level SAN visibility (noisy-neighbour, path imbalance); clear block-ops value. |
+| `performance_metrics_by_host` | not collected | high | Per-host perf is a primary block-storage ops signal (per-consumer IOPS/latency for dashboards); fits purpose. |
+| `performance_metrics_by_hg` | not collected | high | Per-host-group perf aggregates clustered hosts (e.g. ESXi clusters consuming block); clear ops value. |
+| `vsphere_metrics_by_vm` | not collected | skip | vSphere VM analytics, explicitly outside the exporter's purpose. |
+| `vsphere_appson_metrics_by_node` | not collected | skip | vSphere AppsON node metrics; vSphere/VM analytics, out of scope. |
+| `vsphere_appson_metrics_by_appliance` | not collected | skip | vSphere AppsON appliance metrics; vSphere/VM analytics, out of scope. |
+| `space_metrics_by_remote_system` | not collected | high | Capacity per remote system supports DR-target capacity planning; fits replication/ops monitoring purpose. |
+| `copy_metrics_by_file_system` | not collected | medium | Per-filesystem copy stats are useful for NAS replication but niche; session-level health is the priority. |
+| `copy_metrics_by_nas_server` | not collected | medium | Per-NAS-server copy stats niche; relevant to NAS-replication topologies only. |
+| `performance_headroom_by_appliance` | not collected | high | Appliance performance headroom (saturation/load-vs-capacity) is a high-value capacity-planning signal for ops; fits purpose. |
+| `performance_metrics_by_appliance_resource_util` | not collected | high | Appliance resource-utilization (CPU/cache/back-end saturation) underpins bottleneck dashboards; clear ops value, fits purpose. |
 
 ## Fix list
 
