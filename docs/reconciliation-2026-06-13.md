@@ -285,4 +285,64 @@ Legend — **Status**: `emitted` = a powerstore_ metric family already covers it
 
 ## Fix list
 
-_(Task 5)_
+### Correctness fixes
+
+One row per Pass 2 ⚠️ finding. Both require a live `--trace` capture to confirm the exact
+field/column spelling the array actually populates before the read is changed.
+
+| # | Issue | File:line | Fix | Live `--trace` needed? | Effort |
+|---|---|---|---|---|---|
+| 1 | Bulk appliance CPU util reads `avg_io_workload_cpu_utilization` with **no fallback**; spec field is bare `io_workload_cpu_utilization` (no `avg_`) → silent-zero on the bulk path if the CSV column is not avg-spelled. (Pass 2 ⚠️, Appliance performance) | `internal/powerstore/derive_bulk.go:73` | Add `"io_workload_cpu_utilization"` as a fallback key alongside the avg-spelled primary. SDK path already correct (`IoWorkloadCPUUtilization`). | Yes — confirm bulk CSV column spelling | S |
+| 2 | SDK FS perf reads `AvgReadIops`/`AvgWriteIops`/`AvgTotalIops`/`AvgReadBandwidth`/`AvgWriteBandwidth` (json `avg_*`), but the 4.4.0 `base_performance_metrics_by_file_system` schema defines only the bare `read_iops`/`write_iops`/`total_iops`/`read_bandwidth`/`write_bandwidth`. The struct carries BOTH; the spec-aligned bare fields go unread → silent-zero if the array populates the bare fields per spec. (Pass 2 ⚠️, File-system performance) | `internal/powerstore/derive_filesystem_perf.go:24-28` | Prefer the bare `ReadIops`/`WriteIops`/`TotalIops`/`ReadBandwidth`/`WriteBandwidth` fields (or fall back to them when the `Avg*` fields are zero). | Yes — confirm which the live FS perf response populates | S |
+
+### Coverage additions
+
+**Downstream-artifact obligation (impossible to miss):** every coverage addition below is a
+**lockstep multi-artifact change**, not a derive-code edit. For EACH entity adopted you MUST,
+in the same change set: (1) implement BOTH metric paths — `derive_bulk.go` AND the matching
+per-entity derive — using the shared label builders in `metrics.go`, per the **metric-parity
+invariant** (a test enforces identical metric names + label KEYS across paths); (2) wire the
+new metrics into the relevant **Grafana dashboards** under `grafana/block/*.json` and
+`grafana/file/*.json` (the six: `01-cluster-overview`, `02-appliances`, `03-volumes`,
+`04-capacity`, `05-ports`, `file/01-file-systems`) — note `grafana/block/05-ports.json` exists
+but has **no port-perf panels yet**, so the FE FC/Eth port-perf additions must add panels
+there; (3) update `docs/metrics.md` (metric catalog) AND `docs/dashboards.md`. A coverage
+addition that touches only Go derive code is **incomplete**. Some entities are SDK-only (no
+bulk CSV column) — those carry `Both paths? = no (SDK-only)` and are exempt from the bulk-path
+half only, NOT from the dashboards/docs obligation.
+
+#### High priority (16 — Pass 4 `high` rows, listed individually, grouped by family)
+
+| Entity / fields | Priority | Target dashboard | Both paths? | Effort | Notes |
+|---|---|---|---|---|---|
+| `performance_metrics_by_fe_fc_port` — FE FC port iops/bandwidth/latency | high | `grafana/block/05-ports.json` (add port-perf panels) | yes (bulk + SDK) | M | Core SAN host-facing throughput/latency/congestion. Wires the empty ports dashboard. |
+| `performance_metrics_by_fe_eth_port` — FE Eth port iops/bandwidth/latency | high | `grafana/block/05-ports.json` (add port-perf panels) | yes (bulk + SDK) | M | Core iSCSI/NVMe-TCP host-facing signal. Wires the empty ports dashboard. |
+| `performance_metrics_by_fe_fc_node` — per-node FE FC aggregate | high | `grafana/block/05-ports.json` (or `02-appliances.json`) | yes (bulk + SDK) | M | Node-level front-end FC load; complements per-port view. |
+| `performance_metrics_by_fe_eth_node` — per-node FE Eth aggregate | high | `grafana/block/05-ports.json` (or `02-appliances.json`) | yes (bulk + SDK) | M | Node-level front-end Eth load; complements per-port view. |
+| `performance_metrics_by_host` — per-host iops/bandwidth/latency | high | new `grafana/block/06-hosts.json` (host/initiator/hg family) | yes (bulk + SDK) | M | Primary per-consumer block-ops signal for dashboards. |
+| `performance_metrics_by_hg` — per-host-group aggregate | high | new `grafana/block/06-hosts.json` | yes (bulk + SDK) | M | Aggregates clustered hosts (e.g. ESXi clusters). |
+| `performance_metrics_by_initiator` — per-initiator host-port perf | high | new `grafana/block/06-hosts.json` | yes (bulk + SDK) | M | Host-port-level SAN visibility (noisy-neighbour, path imbalance). High cardinality. |
+| `performance_metrics_by_nas_server` — NAS-server iops/bandwidth/latency | high | `grafana/file/01-file-systems.json` (or new file dashboard) | yes (bulk + SDK) | M | Top-level file-serving entity; per-tenant throughput/latency. |
+| `space_metrics_by_volume` — per-volume capacity/efficiency | high | `grafana/block/04-capacity.json` | yes (bulk + SDK) | M | Primary block capacity-planning signal. |
+| `space_metrics_by_volume_family` — snapshot+clone roll-up to source | high | `grafana/block/04-capacity.json` | yes (bulk + SDK) | M | True consumed capacity for thin/snap planning. |
+| `space_metrics_by_vg` — per-volume-group capacity | high | `grafana/block/04-capacity.json` (or `03-volumes.json`) | yes (bulk + SDK) | M | Consistency-group capacity planning; complements emitted vg perf. |
+| `space_metrics_by_remote_system` — capacity per remote system | high | `grafana/block/04-capacity.json` (replication section) | no (SDK-only) | M | DR-target capacity planning. |
+| `copy_metrics_by_remote_system` — copy throughput per remote system | high | new replication dashboard / `01-cluster-overview.json` | no (SDK-only) | M | Key DR-link health (per-peer transfer). |
+| `copy_metrics_by_replication_session` — per-session copy metrics | high | new replication dashboard / `01-cluster-overview.json` | no (SDK-only) | M | Core replication-health signal (RPO compliance, transfer progress); complements SDK-derived `powerstore_replication_*`. |
+| `performance_headroom_by_appliance` — saturation / load-vs-capacity | high | `grafana/block/02-appliances.json` | no (SDK-only) | M | High-value capacity-planning saturation signal. |
+| `performance_metrics_by_appliance_resource_util` — CPU/cache/back-end saturation | high | `grafana/block/02-appliances.json` | yes (bulk + SDK) | M | Underpins bottleneck dashboards. |
+
+#### Medium priority (14 — Pass 4 `medium` rows, grouped compactly; each entity named)
+
+| Entity / fields | Priority | Target dashboard | Both paths? | Effort | Notes |
+|---|---|---|---|---|---|
+| `performance_metrics_by_node` · `performance_metrics_by_cluster` | medium | `grafana/block/02-appliances.json` / `01-cluster-overview.json` | yes (bulk + SDK) | M | Per-node balance / cluster roll-up; both largely derivable from appliance series in PromQL. |
+| `space_metrics_by_storage_container` | medium | `grafana/block/04-capacity.json` | no (SDK-only) | M | vVol datastore space; niche for block+file ops. |
+| `copy_metrics_by_appliance` · `copy_metrics_by_cluster` · `copy_metrics_by_vg` · `copy_metrics_by_rg` · `copy_metrics_by_volume` | medium | replication dashboard / `01-cluster-overview.json` | no (SDK-only) | M | Coarser copy roll-ups; secondary to session-level health. `_by_rg` applies to NAS/group-replication topologies. |
+| `performance_metrics_file_by_appliance` · `performance_metrics_file_by_cluster` | medium | `grafana/file/01-file-systems.json` | yes (bulk + SDK) | M | Aggregate file perf; reconstructable by summing per-FS series. |
+| `performance_metrics_by_ip_port` · `performance_metrics_by_ip_port_iscsi` | medium | `grafana/block/05-ports.json` | yes (bulk + SDK) | M | IP-port perf overlaps FE Eth ports; high-cardinality, partly redundant. iSCSI variant niche. |
+| `copy_metrics_by_file_system` · `copy_metrics_by_nas_server` | medium | `grafana/file/01-file-systems.json` | no (SDK-only) | M | NAS-replication copy stats; niche, session-level health is the priority. |
+
+> **This fix list is the input to a future implementation plan** (the `writing-plans` skill).
+> No code, dashboard, or metric is changed by this reconciliation — it only records the
+> findings and the lockstep obligation each adoption carries.

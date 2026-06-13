@@ -45,3 +45,8 @@ ports, and per-entity performance metrics.
 
 Overall the trade-off is favorable: less code, better maintainability, at the
 cost of these documented workarounds which are stable given the API surface.
+
+> **Superseded (2026-06-13):** PowerStore 4.4.0 exposes `performance_metrics_by_file_system`
+> and `space_metrics_by_file_system`; gopowerstore v1.22 provides `PerformanceMetricsByFileSystem`.
+> Live FS performance is collected (`derive_filesystem_perf.go`). See ADR-0009 and
+> `docs/reconciliation-2026-06-13.md`.
