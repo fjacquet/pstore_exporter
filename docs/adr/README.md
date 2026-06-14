@@ -18,3 +18,7 @@ Records are numbered sequentially and use the MADR-lite format.
 | [0007](0007-serve-http-before-first-collection.md) | Serve HTTP Before First Collection | Accepted |
 | [0008](0008-goreleaser-sha-pinning-and-signing.md) | GoReleaser, SHA-Pinned Actions, and Signed Artifacts | Accepted |
 | [0009](0009-expand-metric-coverage-library-first.md) | Expand Metric Coverage, Library-First | Accepted |
+| [0010](0010-config-hot-reload.md) | Configuration Hot-Reload via SIGHUP and File-Watch | Accepted |
+| [0011](0011-otlp-push-export.md) | OTLP Push Export via Observable Gauges | Accepted |
+| [0012](0012-credentials-via-env-and-file.md) | Credentials via Environment, `${ENV}` Interpolation, and Password Files | Accepted |
+| [0013](0013-trace-transport-scope.md) | `--trace` HTTP Transport and Its Scope Limitation | Accepted |
