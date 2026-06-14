@@ -1,0 +1,216 @@
+{
+  "title": "PowerStore — Capacity",
+  "uid": "pstore-capacity",
+  "tags": ["powerstore", "pstore_exporter", "block", "capacity"],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "timezone": "browser",
+  "links": [
+    {
+      "title": "PowerStore dashboards",
+      "type": "dashboards",
+      "tags": ["powerstore"],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "array",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_up, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Cluster",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "title": "Physical Space — Used vs Total",
+      "type": "timeseries",
+      "description": "Cluster physical capacity rollup (SpaceMetricsByCluster). Gauge values — aggregate with sum, never rate().",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 15, "showPoints": "never", "stacking": { "mode": "normal" } } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ total$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ used$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (array) (powerstore_cluster_physical_total_bytes{array=~\"$array\"})", "legendFormat": "{{array}} total" },
+        { "refId": "B", "expr": "sum by (array) (powerstore_cluster_physical_used_bytes{array=~\"$array\"})", "legendFormat": "{{array}} used" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Logical Space — Provisioned vs Used",
+      "type": "timeseries",
+      "description": "Cluster logical provisioned vs logical used (over-provisioning view).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 15, "showPoints": "never" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ provisioned$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ used$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (array) (powerstore_cluster_logical_provisioned_bytes{array=~\"$array\"})", "legendFormat": "{{array}} provisioned" },
+        { "refId": "B", "expr": "sum by (array) (powerstore_cluster_logical_used_bytes{array=~\"$array\"})", "legendFormat": "{{array}} used" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Data Reduction Ratio",
+      "type": "stat",
+      "description": "Cluster data-reduction ratio (N:1).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 2, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "auto" },
+      "targets": [
+        { "refId": "A", "expr": "avg(powerstore_cluster_data_reduction_ratio{array=~\"$array\"})", "legendFormat": "DRR" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Efficiency Ratio",
+      "type": "stat",
+      "description": "Overall cluster efficiency ratio (N:1).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 2, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "auto" },
+      "targets": [
+        { "refId": "A", "expr": "avg(powerstore_cluster_efficiency_ratio{array=~\"$array\"})", "legendFormat": "Efficiency" }
+      ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Appliance",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "collapsed": false
+    },
+    {
+      "id": 5,
+      "title": "Physical Space — Used vs Total (per appliance)",
+      "type": "timeseries",
+      "description": "Per-appliance physical used vs total capacity.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 15, "showPoints": "never" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ total$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ used$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (appliance_name) (powerstore_appliance_physical_total_bytes{array=~\"$array\"})", "legendFormat": "{{appliance_name}} total" },
+        { "refId": "B", "expr": "sum by (appliance_name) (powerstore_appliance_physical_used_bytes{array=~\"$array\"})", "legendFormat": "{{appliance_name}} used" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Appliance Capacity",
+      "type": "table",
+      "description": "Per-appliance physical capacity with used % colored by capacity thresholds (70 / 85).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Used %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] } }
+            ]
+          },
+          { "matcher": { "id": "byName", "options": "Physical Used" }, "properties": [ { "id": "unit", "value": "bytes" } ] },
+          { "matcher": { "id": "byName", "options": "Physical Total" }, "properties": [ { "id": "unit", "value": "bytes" } ] }
+        ]
+      },
+      "options": { "showHeader": true },
+      "targets": [
+        { "refId": "A", "expr": "100 * powerstore_appliance_physical_used_bytes{array=~\"$array\"} / powerstore_appliance_physical_total_bytes{array=~\"$array\"}", "legendFormat": "", "instant": true, "format": "table" },
+        { "refId": "B", "expr": "powerstore_appliance_physical_used_bytes{array=~\"$array\"}", "legendFormat": "", "instant": true, "format": "table" },
+        { "refId": "C", "expr": "powerstore_appliance_physical_total_bytes{array=~\"$array\"}", "legendFormat": "", "instant": true, "format": "table" }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "job": true, "instance": true, "cluster_id": true },
+            "renameByName": {
+              "appliance_name": "Appliance",
+              "array": "Array",
+              "Value #A": "Used %",
+              "Value #B": "Physical Used",
+              "Value #C": "Physical Total"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Snapshot Savings Ratio",
+      "type": "stat",
+      "description": "Snapshot savings ratio across the selected appliances (N:1).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 2, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "auto" },
+      "targets": [
+        { "refId": "A", "expr": "avg(powerstore_appliance_snapshot_savings_ratio{array=~\"$array\"})", "legendFormat": "Snapshot Savings" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Thin Savings Ratio",
+      "type": "stat",
+      "description": "Thin provisioning savings ratio across the selected appliances (N:1).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 18 },
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 2, "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "textMode": "auto" },
+      "targets": [
+        { "refId": "A", "expr": "avg(powerstore_appliance_thin_savings_ratio{array=~\"$array\"})", "legendFormat": "Thin Savings" }
+      ]
+    }
+  ]
+}

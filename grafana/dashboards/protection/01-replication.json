@@ -1,0 +1,211 @@
+{
+  "title": "PowerStore — Replication / DR",
+  "uid": "pstore-replication",
+  "tags": ["powerstore", "pstore_exporter", "protection", "replication"],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "timezone": "browser",
+  "links": [
+    {
+      "title": "PowerStore dashboards",
+      "type": "dashboards",
+      "tags": ["powerstore"],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "array",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_up, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "state",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_replication_session_state{array=~\"$array\"}, state)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Sessions",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "title": "Sessions in Bad State",
+      "type": "stat",
+      "description": "Count of replication sessions in an unhealthy state (Error / Fractured / Paused / System_Paused).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "targets": [
+        { "refId": "A", "expr": "count(powerstore_replication_session_state{array=~\"$array\",state=~\"Error|Fractured|Paused|System_Paused\"})", "legendFormat": "Bad State" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Replication Sessions",
+      "type": "table",
+      "description": "Current replication sessions with state coloring.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "state" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "OK": { "color": "green", "index": 0 } } },
+                  { "type": "value", "options": { "Synchronized": { "color": "green", "index": 1 } } },
+                  { "type": "value", "options": { "Operating_Normally": { "color": "green", "index": 2 } } },
+                  { "type": "value", "options": { "Error": { "color": "red", "index": 3 } } },
+                  { "type": "value", "options": { "Fractured": { "color": "red", "index": 4 } } },
+                  { "type": "value", "options": { "Paused": { "color": "orange", "index": 5 } } },
+                  { "type": "value", "options": { "System_Paused": { "color": "orange", "index": 6 } } }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "cellHeight": "sm" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "powerstore_replication_session_state{array=~\"$array\",state=~\"$state\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "__name__": true,
+              "array": true,
+              "cluster_id": true,
+              "local_resource_id": true
+            },
+            "indexByName": {
+              "session_id": 0,
+              "resource_type": 1,
+              "role": 2,
+              "type": 3,
+              "remote_system_id": 4,
+              "state": 5
+            },
+            "renameByName": {
+              "session_id": "Session",
+              "resource_type": "Resource Type",
+              "role": "Role",
+              "type": "Type",
+              "remote_system_id": "Remote System",
+              "state": "State"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Health",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "collapsed": false
+    },
+    {
+      "id": 3,
+      "title": "RPO",
+      "type": "timeseries",
+      "description": "Recovery Point Objective per replication rule. Gauge values — aggregate with sum/avg, never rate().",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "powerstore_replication_rpo_seconds{array=~\"$array\"}", "legendFormat": "{{rule_id}}" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Replication Backlog",
+      "type": "timeseries",
+      "description": "Data remaining to be replicated per resource. Gauge values — aggregate with sum/avg, never rate().",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 10 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "powerstore_replication_data_remaining_bytes{array=~\"$array\"}", "legendFormat": "{{resource_id}}" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Transfer Rate",
+      "type": "timeseries",
+      "description": "Replication transfer rate per resource. Gauge values — aggregate with sum/avg, never rate().",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 10 },
+      "fieldConfig": {
+        "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "powerstore_replication_transfer_rate_bytes_per_second{array=~\"$array\"}", "legendFormat": "{{resource_id}}" }
+      ]
+    }
+  ]
+}

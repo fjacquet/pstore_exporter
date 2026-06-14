@@ -1,0 +1,269 @@
+{
+  "title": "PowerStore — File Systems",
+  "uid": "pstore-file-systems",
+  "tags": ["powerstore", "pstore_exporter", "file", "nas"],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "timezone": "browser",
+  "links": [
+    {
+      "title": "PowerStore dashboards",
+      "type": "dashboards",
+      "tags": ["powerstore"],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "array",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_up, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "nas_server",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_file_system_size_total_bytes{array=~\"$array\"}, nas_server_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Capacity",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "title": "File System Size — Total vs Used",
+      "type": "timeseries",
+      "description": "Total and used bytes per file system. Gauge values — aggregate with sum, never rate().",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "fillOpacity": 15, "showPoints": "never" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ total$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ used$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (file_system_name) (powerstore_file_system_size_total_bytes{array=~\"$array\", nas_server_name=~\"$nas_server\"})",
+          "legendFormat": "{{file_system_name}} total"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (file_system_name) (powerstore_file_system_size_used_bytes{array=~\"$array\", nas_server_name=~\"$nas_server\"})",
+          "legendFormat": "{{file_system_name}} used"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "File System Used %",
+      "type": "timeseries",
+      "description": "Percentage of used capacity per file system.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red",    "value": 85 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (file_system_name) (powerstore_file_system_size_used_bytes{array=~\"$array\", nas_server_name=~\"$nas_server\"}) / sum by (file_system_name) (powerstore_file_system_size_total_bytes{array=~\"$array\", nas_server_name=~\"$nas_server\"})",
+          "legendFormat": "{{file_system_name}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "File System Capacity Summary",
+      "type": "table",
+      "description": "Snapshot of total, used, and used % for each file system, grouped by NAS server.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 9 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Used %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green",  "value": null },
+                    { "color": "yellow", "value": 70 },
+                    { "color": "red",    "value": 85 }
+                  ]
+                }
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [{ "displayName": "NAS Server" }, { "displayName": "File System" }]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (file_system_name, nas_server_name, array) (powerstore_file_system_size_total_bytes{array=~\"$array\", nas_server_name=~\"$nas_server\"})",
+          "legendFormat": "Total",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (file_system_name, nas_server_name, array) (powerstore_file_system_size_used_bytes{array=~\"$array\", nas_server_name=~\"$nas_server\"})",
+          "legendFormat": "Used",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "expr": "100 * sum by (file_system_name, nas_server_name, array) (powerstore_file_system_size_used_bytes{array=~\"$array\", nas_server_name=~\"$nas_server\"}) / sum by (file_system_name, nas_server_name, array) (powerstore_file_system_size_total_bytes{array=~\"$array\", nas_server_name=~\"$nas_server\"})",
+          "legendFormat": "Used %",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "organize", "options": {
+            "renameByName": {
+              "file_system_name": "File System",
+              "nas_server_name": "NAS Server",
+              "array": "Array",
+              "Value #A": "Total",
+              "Value #B": "Used",
+              "Value #C": "Used %"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Performance",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 },
+      "collapsed": false
+    },
+    {
+      "id": 4,
+      "title": "Total IOPS per File System",
+      "type": "timeseries",
+      "description": "Total IOPS per file system. Gauge values — aggregate with sum, never rate().",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
+      "fieldConfig": {
+        "defaults": { "unit": "iops", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (file_system_name) (powerstore_file_system_total_iops{array=~\"$array\", nas_server_name=~\"$nas_server\"})",
+          "legendFormat": "{{file_system_name}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Read / Write Latency",
+      "type": "timeseries",
+      "description": "Read and write latency per file system.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 20 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 3000 } ] }
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "avg by (file_system_name) (powerstore_file_system_read_latency_microseconds{array=~\"$array\", nas_server_name=~\"$nas_server\"})", "legendFormat": "{{file_system_name}} read" },
+        { "refId": "B", "expr": "avg by (file_system_name) (powerstore_file_system_write_latency_microseconds{array=~\"$array\", nas_server_name=~\"$nas_server\"})", "legendFormat": "{{file_system_name}} write" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Read / Write Bandwidth",
+      "type": "timeseries",
+      "description": "Read and write bandwidth per file system.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 20 },
+      "fieldConfig": {
+        "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        { "refId": "A", "expr": "sum by (file_system_name) (powerstore_file_system_read_bandwidth_bytes_per_second{array=~\"$array\", nas_server_name=~\"$nas_server\"})", "legendFormat": "{{file_system_name}} read" },
+        { "refId": "B", "expr": "sum by (file_system_name) (powerstore_file_system_write_bandwidth_bytes_per_second{array=~\"$array\", nas_server_name=~\"$nas_server\"})", "legendFormat": "{{file_system_name}} write" }
+      ]
+    }
+  ]
+}

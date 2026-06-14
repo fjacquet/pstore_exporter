@@ -1,0 +1,212 @@
+{
+  "title": "PowerStore — Drives & Hardware Health",
+  "uid": "pstore-drives",
+  "tags": ["powerstore", "pstore_exporter", "hardware"],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "timezone": "browser",
+  "links": [
+    {
+      "title": "PowerStore dashboards",
+      "type": "dashboards",
+      "tags": ["powerstore"],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "array",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_up, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Drives",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "title": "Unhealthy Drives",
+      "type": "stat",
+      "description": "Count of drives whose reported state is not Healthy across the selected arrays.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "targets": [
+        { "refId": "A", "expr": "count(powerstore_drive_state{array=~\"$array\",state!=\"Healthy\"})", "legendFormat": "Unhealthy" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Worn Drives > 80%",
+      "type": "stat",
+      "description": "Count of drives whose wear-level ratio exceeds 0.80 across the selected arrays.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
+      "targets": [
+        { "refId": "A", "expr": "count(powerstore_drive_wear_level_ratio{array=~\"$array\"} > 0.8)", "legendFormat": "Worn" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Drive State",
+      "type": "table",
+      "description": "Per-drive health state. State cell is colored green when Healthy and red otherwise.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" } }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "state" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "Healthy": { "color": "green", "index": 0 } } },
+                  { "type": "special", "options": { "match": "null+nan", "result": { "color": "red", "index": 1 } } }
+                ]
+              },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "cellHeight": "sm" },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": { "mode": "columns", "keepLabels": ["drive_name", "appliance_id", "state"] }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "Value": true },
+            "indexByName": { "drive_name": 0, "appliance_id": 1, "state": 2 },
+            "renameByName": { "drive_name": "Drive", "appliance_id": "Appliance", "state": "State" }
+          }
+        }
+      ],
+      "targets": [
+        { "refId": "A", "expr": "powerstore_drive_state{array=~\"$array\"}", "format": "table", "instant": true, "legendFormat": "" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Drive Wear Level",
+      "type": "bargauge",
+      "description": "Wear-level ratio per drive (0–1). Thresholds at 0.70 (yellow) and 0.80 (red).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.7 }, { "color": "red", "value": 0.8 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "orientation": "horizontal", "displayMode": "gradient", "showUnfilled": true, "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        { "refId": "A", "expr": "powerstore_drive_wear_level_ratio{array=~\"$array\"}", "legendFormat": "{{drive_name}}" }
+      ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Alerts",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "collapsed": false
+    },
+    {
+      "id": 5,
+      "title": "Active Alerts by Severity",
+      "type": "table",
+      "description": "Active alert counts aggregated by severity (a bounded series), NOT individual alert rows. Severity cell is colored: Critical red, Major orange, Minor yellow.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" } }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "severity" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "Critical": { "color": "red", "index": 0 } } },
+                  { "type": "value", "options": { "Major": { "color": "orange", "index": 1 } } },
+                  { "type": "value", "options": { "Minor": { "color": "yellow", "index": 2 } } }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "cellHeight": "sm" },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": { "mode": "columns", "keepLabels": ["array", "severity"] }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "indexByName": { "array": 0, "severity": 1, "Value": 2 },
+            "renameByName": { "array": "Array", "severity": "Severity", "Value": "count" }
+          }
+        }
+      ],
+      "targets": [
+        { "refId": "A", "expr": "powerstore_alert_active{array=~\"$array\"}", "format": "table", "instant": true, "legendFormat": "" }
+      ]
+    }
+  ]
+}

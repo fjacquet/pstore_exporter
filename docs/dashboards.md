@@ -1,15 +1,22 @@
 # Dashboards
 
-Importable Grafana dashboards (PromQL) live in `grafana/`, split by focus area:
+Importable Grafana dashboards (PromQL) live under `grafana/dashboards/`. Each
+subdirectory becomes a Grafana folder (the provisioning provider uses
+`foldersFromFilesStructure: true`), and the whole tree is mounted with a single
+docker-compose volume:
 
-- `grafana/block/` — block storage dashboards: volume performance (IOPS, bandwidth,
-  latency, avg I/O size), appliance overview (performance + capacity + efficiency ratios),
-  port link state.
-- `grafana/file/` — file storage dashboards: file system capacity utilization per NAS
-  server, per array summary.
+- `overview/` — `00-fleet-health` (health/alerts/staleness landing + drill links) and
+  `01-cluster-overview` (fleet performance + capacity rollup).
+- `block/` — `02-appliances`, `03-volumes`, `04-volume-groups`, `05-capacity`,
+  `06-ports`.
+- `file/` — `01-file-systems` (capacity + performance).
+- `protection/` — `01-replication` (DR session state, RPO, backlog, transfer rate).
+- `hardware/` — `01-drives` (drive state, wear level, active alerts).
 
-Dashboards include an `array` template variable populated via `label_values(powerstore_up, array)`
-so you can filter to a single array or view all arrays stacked.
+Every dashboard shares one design system: a `datasource` + `array` template variable
+(`label_values(powerstore_up, array)`, multi/All), collapsible rows, consistent units
+and thresholds, fixed read=blue / write=orange series colors, and a tag-based dashboard
+links dropdown (`powerstore`) plus data links that drill down carrying `$array`.
 
 ## Import
 

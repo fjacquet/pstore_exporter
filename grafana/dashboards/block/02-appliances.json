@@ -1,0 +1,261 @@
+{
+  "title": "PowerStore — Appliances",
+  "uid": "pstore-appliances",
+  "tags": ["powerstore", "pstore_exporter", "block", "appliance"],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "timezone": "browser",
+  "links": [
+    {
+      "title": "PowerStore dashboards",
+      "type": "dashboards",
+      "tags": ["powerstore"],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "array",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_up, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "appliance",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_appliance_total_iops{array=~\"$array\"}, appliance_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Throughput",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "title": "IOPS per Appliance",
+      "type": "timeseries",
+      "description": "Total IOPS per appliance. Gauge values — aggregate with sum, never rate().",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "iops",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "links": [
+            {
+              "title": "Drill to volumes",
+              "url": "/d/pstore-volumes?var-array=${array}&var-appliance=${__field.labels.appliance_name}&${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (appliance_name) (powerstore_appliance_total_iops{array=~\"$array\",appliance_name=~\"$appliance\"})",
+          "legendFormat": "{{appliance_name}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Read Bandwidth per Appliance",
+      "type": "timeseries",
+      "description": "Read bandwidth in bytes/s per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "links": [
+            {
+              "title": "Drill to volumes",
+              "url": "/d/pstore-volumes?var-array=${array}&var-appliance=${__field.labels.appliance_name}&${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (appliance_name) (powerstore_appliance_read_bandwidth_bytes_per_second{array=~\"$array\",appliance_name=~\"$appliance\"})",
+          "legendFormat": "{{appliance_name}} read"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Write Bandwidth per Appliance",
+      "type": "timeseries",
+      "description": "Write bandwidth in bytes/s per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "links": [
+            {
+              "title": "Drill to volumes",
+              "url": "/d/pstore-volumes?var-array=${array}&var-appliance=${__field.labels.appliance_name}&${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (appliance_name) (powerstore_appliance_write_bandwidth_bytes_per_second{array=~\"$array\",appliance_name=~\"$appliance\"})",
+          "legendFormat": "{{appliance_name}} write"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Latency",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "collapsed": false
+    },
+    {
+      "id": 4,
+      "title": "Read Latency per Appliance",
+      "type": "timeseries",
+      "description": "Average read latency in microseconds per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 3000 } ] },
+          "links": [
+            {
+              "title": "Drill to volumes",
+              "url": "/d/pstore-volumes?var-array=${array}&var-appliance=${__field.labels.appliance_name}&${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (appliance_name) (powerstore_appliance_read_latency_microseconds{array=~\"$array\",appliance_name=~\"$appliance\"})",
+          "legendFormat": "{{appliance_name}} read"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Write Latency per Appliance",
+      "type": "timeseries",
+      "description": "Average write latency in microseconds per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 3000 } ] },
+          "links": [
+            {
+              "title": "Drill to volumes",
+              "url": "/d/pstore-volumes?var-array=${array}&var-appliance=${__field.labels.appliance_name}&${__url_time_range}"
+            }
+          ]
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
+          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (appliance_name) (powerstore_appliance_write_latency_microseconds{array=~\"$array\",appliance_name=~\"$appliance\"})",
+          "legendFormat": "{{appliance_name}} write"
+        }
+      ]
+    },
+    {
+      "id": 102,
+      "type": "row",
+      "title": "CPU",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "collapsed": false
+    },
+    {
+      "id": 6,
+      "title": "IO Workload CPU Utilization per Appliance",
+      "type": "timeseries",
+      "description": "CPU utilization (ratio 0–1) used for IO workload per appliance.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 19 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.7 }, { "color": "red", "value": 0.9 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "powerstore_appliance_io_workload_cpu_utilization{array=~\"$array\",appliance_name=~\"$appliance\"}",
+          "legendFormat": "{{appliance_name}}"
+        }
+      ]
+    }
+  ]
+}
