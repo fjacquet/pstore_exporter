@@ -6,6 +6,25 @@ import (
 	"github.com/dell/gopowerstore"
 )
 
+// TestBulkApplianceCPUUtilSpecAlignedColumn covers the 4.4.0 reconciliation
+// finding: the bulk appliance perf read for CPU utilization had no fallback to the
+// spec-aligned bare column name. base_performance_metrics_by_appliance defines
+// io_workload_cpu_utilization (no avg_ prefix); the read must accept it.
+func TestBulkApplianceCPUUtilSpecAlignedColumn(t *testing.T) {
+	topo := NewTopology(
+		gopowerstore.Cluster{ID: "1", Name: "CLU"},
+		[]gopowerstore.ApplianceInstance{{ID: "appl-1", Name: "ApplianceA"}},
+		nil, nil, nil, nil, nil, nil,
+	)
+	rows := []map[string]string{{
+		"appliance_id": "appl-1", "io_workload_cpu_utilization": "73.5",
+	}}
+	got := deriveBulkAppliancePerf("p1", topo, rows)
+	if !hasSample(got, "powerstore_appliance_io_workload_cpu_utilization", 73.5) {
+		t.Fatalf("cpu util: want 73.5 from spec-aligned column, got %+v", got)
+	}
+}
+
 func TestBulkVolumeSamplesMatchPerEntity(t *testing.T) {
 	topo := NewTopology(
 		gopowerstore.Cluster{ID: "1", Name: "CLU"},

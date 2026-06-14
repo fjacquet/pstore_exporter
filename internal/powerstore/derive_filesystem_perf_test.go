@@ -54,6 +54,44 @@ func TestDeriveFileSystemPerfLatestSample(t *testing.T) {
 	}
 }
 
+// TestDeriveFileSystemPerfPrefersSpecAlignedFields covers the 4.4.0 reconciliation
+// finding: base_performance_metrics_by_file_system defines the bare read_iops/
+// write_iops/total_iops/read_bandwidth/write_bandwidth fields, while the SDK struct
+// also carries avg_*-tagged variants. The derive must read the spec-aligned bare
+// fields when the array populates them (avg_* left zero), and fall back to avg_*
+// otherwise — so it is correct regardless of which the live array emits.
+func TestDeriveFileSystemPerfPrefersSpecAlignedFields(t *testing.T) {
+	topo := NewTopology(gopowerstore.Cluster{ID: "c1"}, nil, nil, nil, nil,
+		[]gopowerstore.FileSystem{{ID: "fs-1", Name: "fsA"}}, nil, nil)
+	fs := topo.FileSystems[0]
+
+	// Spec-aligned bare fields populated; avg_* counterparts left zero.
+	var s gopowerstore.PerformanceMetricsByFileSystemResponse
+	s.FileSystemID = "fs-1"
+	s.ReadIops = 42
+	s.WriteIops = 7
+	s.TotalIops = 49
+	s.ReadBandwidth = 1024
+	s.WriteBandwidth = 512
+
+	got := deriveFileSystemPerf("p1", topo, fs, []gopowerstore.PerformanceMetricsByFileSystemResponse{s})
+
+	for _, tc := range []struct {
+		name string
+		want float64
+	}{
+		{"powerstore_file_system_read_iops", 42},
+		{"powerstore_file_system_write_iops", 7},
+		{"powerstore_file_system_total_iops", 49},
+		{"powerstore_file_system_read_bandwidth_bytes_per_second", 1024},
+		{"powerstore_file_system_write_bandwidth_bytes_per_second", 512},
+	} {
+		if !hasSample(got, tc.name, tc.want) {
+			t.Fatalf("%s: want %v from spec-aligned bare field, got %+v", tc.name, tc.want, got)
+		}
+	}
+}
+
 func TestDeriveFileSystemPerfEmpty(t *testing.T) {
 	topo := NewTopology(gopowerstore.Cluster{ID: "c1"}, nil, nil, nil, nil,
 		[]gopowerstore.FileSystem{{ID: "fs-1", Name: "fsA"}}, nil, nil)
