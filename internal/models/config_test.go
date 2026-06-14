@@ -25,8 +25,8 @@ func TestSetDefaultsPortAndInterval(t *testing.T) {
 	if err := c.Validate(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if c.Server.Port != "9101" {
-		t.Fatalf("want default port 9101, got %q", c.Server.Port)
+	if c.Server.Port != "9446" {
+		t.Fatalf("want default port 9446, got %q", c.Server.Port)
 	}
 	if c.Collection.Interval != "30s" {
 		t.Fatalf("want default interval 30s, got %q", c.Collection.Interval)

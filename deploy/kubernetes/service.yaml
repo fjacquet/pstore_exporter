@@ -9,5 +9,5 @@ spec:
     app.kubernetes.io/name: pstore-exporter
   ports:
     - name: metrics
-      port: 9101
+      port: 9446
       targetPort: metrics

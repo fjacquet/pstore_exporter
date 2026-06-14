@@ -28,7 +28,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifi
 COPY --from=builder /app/pstore_exporter /usr/bin/pstore_exporter
 COPY config.yaml /etc/pstore_exporter/config.yaml
 
-EXPOSE 9101
+EXPOSE 9446
 
 USER pstore
 
