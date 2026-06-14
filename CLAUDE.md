@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Dell PowerStore Prometheus + OTLP exporter (Go). Binary `pstore_exporter`, metrics
-port 9101, metric prefix `powerstore_`.
+port 9446, metric prefix `powerstore_`.
 
 ## Commands
 ```bash
@@ -15,7 +15,7 @@ PSTORE1_PASSWORD=x ./bin/pstore_exporter --config config.yaml --once --debug --t
 #   --once --debug also dumps every collected sample (sorted, exposition style) to stdout;
 #   --trace logs raw bulk-API response bodies (method/URL/status + body; headers NEVER —
 #   Basic auth + DELL-EMC-TOKEN live there; login_session responses skipped)
-docker compose up # exporter:9101 + Prometheus:9090 + Grafana:3000 + otel-collector
+docker compose up # exporter:9446 + Prometheus:9090 + Grafana:3000 + otel-collector
 make release-snapshot # local goreleaser dry-run: archives + SBOM, no publish/sign/push
 ```
 

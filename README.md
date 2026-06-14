@@ -32,7 +32,7 @@ Install with Homebrew (macOS / Linuxbrew):
 brew install fjacquet/tap/pstore_exporter
 export PSTORE1_PASSWORD='your-monitor-password'
 pstore_exporter --config config.yaml   # bring your own config.yaml
-# metrics: http://localhost:9101/metrics   health: http://localhost:9101/health
+# metrics: http://localhost:9446/metrics   health: http://localhost:9446/health
 ```
 
 Or build from source:

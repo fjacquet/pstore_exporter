@@ -32,7 +32,7 @@ curl -fsSLO https://raw.githubusercontent.com/fjacquet/pstore_exporter/main/conf
 $EDITOR config.yaml                                  # set your array hostname(s)/user
 export PSTORE1_PASSWORD='your-monitor-password'      # password via env, not the file
 pstore_exporter --config config.yaml
-# metrics: http://localhost:9101/metrics   health: http://localhost:9101/health
+# metrics: http://localhost:9446/metrics   health: http://localhost:9446/health
 ```
 
 See [Configuration](configuration.md) for the full config reference. Upgrade or

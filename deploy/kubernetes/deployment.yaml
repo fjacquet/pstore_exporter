@@ -30,7 +30,7 @@ spec:
           args: ["--config", "/etc/pstore_exporter/config.yaml"]
           ports:
             - name: metrics
-              containerPort: 9101
+              containerPort: 9446
           envFrom:
             - secretRef:
                 name: pstore-exporter-secrets

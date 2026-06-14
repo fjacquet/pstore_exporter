@@ -16,13 +16,13 @@ func writeConfigFile(t *testing.T, body string) string {
 }
 
 const oneArray = `
-server: {host: "0.0.0.0", port: "9101", uri: "/metrics"}
+server: {host: "0.0.0.0", port: "9446", uri: "/metrics"}
 arrays:
   - {name: p1, endpoint: "https://10.0.0.1/api/rest", username: u, password: p}
 `
 
 const twoArrays = `
-server: {host: "0.0.0.0", port: "9101", uri: "/metrics"}
+server: {host: "0.0.0.0", port: "9446", uri: "/metrics"}
 arrays:
   - {name: p1, endpoint: "https://10.0.0.1/api/rest", username: u, password: p}
   - {name: p2, endpoint: "https://10.0.0.2/api/rest", username: u, password: p}
@@ -56,7 +56,7 @@ func TestReloadDetectsArrayChange(t *testing.T) {
 func TestReloadRejectsInvalidConfigWithoutMutating(t *testing.T) {
 	sc := NewSafeConfig(&Config{Arrays: []ArrayConfig{{Name: "p1", Endpoint: "https://10.0.0.1/api/rest", Username: "u", Password: "p"}}}, nil)
 
-	badPath := writeConfigFile(t, "server: {port: \"9101\"}\narrays: []\n")
+	badPath := writeConfigFile(t, "server: {port: \"9446\"}\narrays: []\n")
 	if _, err := sc.ReloadConfig(badPath); err == nil {
 		t.Fatal("expected validation error for config with no arrays")
 	}

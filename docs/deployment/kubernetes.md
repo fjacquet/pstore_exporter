@@ -7,7 +7,7 @@ Manifests live in `deploy/kubernetes/`, wired together with kustomize.
 | `configmap.yaml` | `config.yaml` (set arrays here; `logName: ""` for pod logs) |
 | `secret.example.yaml` | array passwords (`PSTORE1_PASSWORD`, …) |
 | `deployment.yaml` | hardened single-replica Deployment |
-| `service.yaml` | ClusterIP exposing the `metrics` port (9101) |
+| `service.yaml` | ClusterIP exposing the `metrics` port (9446) |
 | `servicemonitor.yaml` | optional Prometheus Operator scrape config |
 | `kustomization.yaml` | ties the above together |
 
@@ -36,4 +36,4 @@ kubectl rollout status deploy/pstore-exporter
 
 If you run the Prometheus Operator, uncomment `servicemonitor.yaml` in
 `kustomization.yaml`. Otherwise scrape the Service directly with a `static_config` or
-`kubernetes_sd_config` targeting the `metrics` port (9101).
+`kubernetes_sd_config` targeting the `metrics` port (9446).

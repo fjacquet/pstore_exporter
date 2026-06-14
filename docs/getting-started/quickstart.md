@@ -9,8 +9,8 @@ export PSTORE1_PASSWORD='your-monitor-password'
 Then:
 
 ```bash
-curl -s localhost:9101/metrics | grep '^powerstore_up'
-curl -s localhost:9101/health
+curl -s localhost:9446/metrics | grep '^powerstore_up'
+curl -s localhost:9446/health
 ```
 
 You should see `powerstore_up{array="pstore-1"} 1` once the first collection cycle
@@ -59,7 +59,7 @@ OpenTelemetry Collector:
 PSTORE1_PASSWORD='your-monitor-password' docker compose up --build
 ```
 
-- Exporter metrics: <http://localhost:9101/metrics>
+- Exporter metrics: <http://localhost:9446/metrics>
 - Prometheus: <http://localhost:9090>
 - Grafana: <http://localhost:3000> (login `admin` / `admin`; PowerStore dashboards under the **block** and **file** folders)
 - OTLP collector receives the push when `opentelemetry.metrics.enabled: true`.

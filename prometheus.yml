@@ -5,4 +5,4 @@ scrape_configs:
   - job_name: powerstore
     metrics_path: /metrics
     static_configs:
-      - targets: ["pstore_exporter:9101"]
+      - targets: ["pstore_exporter:9446"]

@@ -5,7 +5,7 @@ The exporter is configured with a single YAML file (default example: `config.yam
 ```yaml
 server:
   host: "0.0.0.0"
-  port: "9101"
+  port: "9446"
   uri: "/metrics"
   logName: ""          # absolute path -> file + stdout; "" -> stdout only (recommended under systemd/k8s)
 
@@ -38,7 +38,7 @@ arrays:
 
 | Section | Key | Notes |
 |---|---|---|
-| `server` | `host`, `port`, `uri` | HTTP bind address and Prometheus metrics path. Default port is `9101`. |
+| `server` | `host`, `port`, `uri` | HTTP bind address and Prometheus metrics path. Default port is `9446`. |
 | `server` | `logName` | Log file path (use an **absolute** path so it resolves the same in containers); empty string logs to stdout (recommended under systemd/k8s). If the path is not writable, logging falls back to stdout with a warning instead of failing to start. |
 | `collection` | `interval` | Background poll period for every array. Matches Prometheus scrape cadence well at `30s`. |
 | `collection` | `timeout` | Per-array timeout; a slow/unreachable array fails fast without blocking others. |

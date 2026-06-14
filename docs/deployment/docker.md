@@ -15,7 +15,7 @@ Mount a config and pass array secrets via the environment (referenced as
 
 ```bash
 docker run -d --name pstore_exporter \
-  -p 9101:9101 \
+  -p 9446:9446 \
   -e PSTORE1_PASSWORD='your-monitor-password' \
   -v "$PWD/config.yaml:/etc/pstore_exporter/config.yaml:ro" \
   ghcr.io/fjacquet/pstore_exporter:0.1.0
@@ -53,7 +53,7 @@ docker compose -f docker-compose.ghcr.yml pull
 
 | Service | Port | Purpose |
 |---|---|---|
-| `pstore_exporter` | 9101 | `/metrics` + `/health` |
+| `pstore_exporter` | 9446 | `/metrics` + `/health` |
 | `prometheus` | 9090 | scrapes the exporter (`prometheus.yml`) |
 | `grafana` | 3000 | dashboards (login `admin` / `admin`), Prometheus datasource + block/file folders auto-provisioned |
 | `otel-collector` | 4317 / 8889 | receives the OTLP push (when enabled) and re-exposes it |
