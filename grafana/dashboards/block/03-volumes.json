@@ -1,0 +1,218 @@
+{
+  "title": "PowerStore — Volumes (Top 10)",
+  "uid": "pstore-volumes",
+  "tags": ["powerstore", "pstore_exporter", "block", "volume"],
+  "schemaVersion": 39,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "timezone": "browser",
+  "links": [
+    {
+      "title": "PowerStore dashboards",
+      "type": "dashboards",
+      "tags": ["powerstore"],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "array",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_up, array)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      },
+      {
+        "name": "appliance",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(powerstore_volume_total_iops{array=~\"$array\"}, appliance_name)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "Performance",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "title": "Top 10 Volumes — Total IOPS",
+      "type": "timeseries",
+      "description": "Top 10 volumes by total IOPS. Gauge values — aggregate with sum, never rate().",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": { "unit": "iops", "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" } },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (volume_name) (powerstore_volume_total_iops{array=~\"$array\",appliance_name=~\"$appliance\"}))",
+          "legendFormat": "{{volume_name}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Top 10 Volumes — Read Latency (µs)",
+      "type": "timeseries",
+      "description": "Top 10 volumes by read latency.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 3000 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (volume_name) (powerstore_volume_read_latency_microseconds{array=~\"$array\",appliance_name=~\"$appliance\"}))",
+          "legendFormat": "{{volume_name}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Top 10 Volumes — Write Latency (µs)",
+      "type": "timeseries",
+      "description": "Top 10 volumes by write latency.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 3000 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (volume_name) (powerstore_volume_write_latency_microseconds{array=~\"$array\",appliance_name=~\"$appliance\"}))",
+          "legendFormat": "{{volume_name}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Top 10 Volumes — Read Bandwidth (Bps)",
+      "type": "timeseries",
+      "description": "Top 10 volumes by read bandwidth.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/.*/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (volume_name) (powerstore_volume_read_bandwidth_bytes_per_second{array=~\"$array\",appliance_name=~\"$appliance\"}))",
+          "legendFormat": "{{volume_name}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Top 10 Volumes — Write Bandwidth (Bps)",
+      "type": "timeseries",
+      "description": "Top 10 volumes by write bandwidth.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "/.*/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (volume_name) (powerstore_volume_write_bandwidth_bytes_per_second{array=~\"$array\",appliance_name=~\"$appliance\"}))",
+          "legendFormat": "{{volume_name}}"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "IO Size",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "collapsed": false
+    },
+    {
+      "id": 6,
+      "title": "Avg IO Size by Volume",
+      "type": "table",
+      "description": "Average IO size in bytes for each volume.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 26 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [{ "displayName": "Value", "desc": true }]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (volume_name, appliance_name) (powerstore_volume_avg_io_size_bytes{array=~\"$array\",appliance_name=~\"$appliance\"})",
+          "legendFormat": "{{volume_name}}",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": { "valueLabel": "volume_name" } },
+        { "id": "organize", "options": {} }
+      ]
+    }
+  ]
+}

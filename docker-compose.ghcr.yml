@@ -47,9 +47,9 @@ services:
     volumes:
       # Datasource + dashboard providers (auto-provisioned on startup).
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      # Bundled dashboards; block/ and file/ become Grafana folders.
-      - ./grafana/block:/var/lib/grafana/dashboards/block:ro
-      - ./grafana/file:/var/lib/grafana/dashboards/file:ro
+      # Bundled dashboards; each subdirectory becomes a Grafana folder
+      # (overview/ block/ file/ protection/ hardware/).
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
     restart: unless-stopped

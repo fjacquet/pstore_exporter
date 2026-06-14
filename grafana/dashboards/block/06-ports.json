@@ -6,6 +6,18 @@
   "version": 1,
   "time": { "from": "now-6h", "to": "now" },
   "refresh": "30s",
+  "timezone": "browser",
+  "links": [
+    {
+      "title": "PowerStore dashboards",
+      "type": "dashboards",
+      "tags": ["powerstore"],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link"
+    }
+  ],
   "templating": {
     "list": [
       {
@@ -29,42 +41,19 @@
   },
   "panels": [
     {
-      "id": 1,
-      "title": "Ports Down",
-      "type": "stat",
-      "description": "Count of ports currently in DOWN state.",
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "red",   "value": 1 }
-            ]
-          },
-          "color": { "mode": "thresholds" }
-        },
-        "overrides": []
-      },
-      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "count(powerstore_port_link_up{array=~\"$array\"} == 0) or vector(0)",
-          "legendFormat": "Ports Down"
-        }
-      ]
+      "id": 100,
+      "type": "row",
+      "title": "Status",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
     },
     {
-      "id": 2,
+      "id": 1,
       "title": "Ports Up",
       "type": "stat",
-      "description": "Count of ports currently in UP state.",
+      "description": "Count of ports currently in UP state across the selected arrays.",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
       "fieldConfig": {
         "defaults": {
           "unit": "none",
@@ -89,36 +78,71 @@
       ]
     },
     {
+      "id": 2,
+      "title": "Ports Down",
+      "type": "stat",
+      "description": "Count of ports currently in DOWN state across the selected arrays.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(powerstore_port_link_up{array=~\"$array\"} == 0) or vector(0)",
+          "legendFormat": "Ports Down"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "Detail",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "collapsed": false
+    },
+    {
       "id": 3,
       "title": "Port Link Status",
       "type": "table",
-      "description": "Current link status for every port, grouped by port_type and port_name.",
+      "description": "Current link status for every port, grouped by port_type and port_name. 1 = Up, 0 = Down.",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 4 },
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 6 },
       "fieldConfig": {
-        "defaults": { "unit": "none" },
+        "defaults": { "unit": "none", "custom": { "align": "auto" } },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Value" },
+            "matcher": { "id": "byName", "options": "Status" },
             "properties": [
               {
                 "id": "mappings",
                 "value": [
-                  { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" } } },
-                  { "type": "value", "options": { "1": { "text": "UP",   "color": "green" } } }
+                  { "type": "value", "options": { "0": { "text": "Down", "color": "red" } } },
+                  { "type": "value", "options": { "1": { "text": "Up",   "color": "green" } } }
                 ]
               },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
               { "id": "custom.displayMode", "value": "color-background" }
             ]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Time" },
-            "properties": [{ "id": "custom.hidden", "value": true }]
           }
         ]
       },
       "options": {
-        "sortBy": [{ "displayName": "port_type" }, { "displayName": "port_name" }]
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Port Type" }, { "displayName": "Port Name" }]
       },
       "targets": [
         {
@@ -130,14 +154,32 @@
         }
       ],
       "transformations": [
-        { "id": "organize", "options": {
-            "excludeByName": { "__name__": true },
+        {
+          "id": "labelsToFields",
+          "options": { "mode": "columns" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "cluster_id": true,
+              "port_id": true
+            },
+            "indexByName": {
+              "array": 0,
+              "appliance_id": 1,
+              "port_name": 2,
+              "port_type": 3,
+              "Value": 4
+            },
             "renameByName": {
+              "array": "Array",
+              "appliance_id": "Appliance ID",
               "port_name": "Port Name",
               "port_type": "Port Type",
-              "appliance_id": "Appliance ID",
-              "array": "Array",
-              "Value": "Link Status"
+              "Value": "Status"
             }
           }
         }
