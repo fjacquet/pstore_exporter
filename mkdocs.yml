@@ -68,3 +68,8 @@ nav:
       - "0006: Metric Naming and Units": adr/0006-metric-naming-and-units.md
       - "0007: Serve HTTP Before First Collection": adr/0007-serve-http-before-first-collection.md
       - "0008: GoReleaser, SHA-Pinning, and Signing": adr/0008-goreleaser-sha-pinning-and-signing.md
+      - "0009: Expand Metric Coverage, Library-First": adr/0009-expand-metric-coverage-library-first.md
+      - "0010: Configuration Hot-Reload": adr/0010-config-hot-reload.md
+      - "0011: OTLP Push Export": adr/0011-otlp-push-export.md
+      - "0012: Credentials via Environment and File": adr/0012-credentials-via-env-and-file.md
+      - "0013: --trace Transport Scope": adr/0013-trace-transport-scope.md
