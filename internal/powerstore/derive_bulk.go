@@ -70,7 +70,7 @@ func deriveBulkAppliancePerf(array string, topo *Topology, rows []map[string]str
 			Sample{"powerstore_appliance_write_bandwidth_bytes_per_second", labels, csvFloat(r, "avg_write_bandwidth", "write_bandwidth")},
 			Sample{"powerstore_appliance_read_latency_microseconds", labels, csvFloat(r, "avg_read_latency")},
 			Sample{"powerstore_appliance_write_latency_microseconds", labels, csvFloat(r, "avg_write_latency")},
-			Sample{"powerstore_appliance_io_workload_cpu_utilization", labels, csvFloat(r, "avg_io_workload_cpu_utilization")},
+			Sample{"powerstore_appliance_io_workload_cpu_utilization", labels, csvFloat(r, "avg_io_workload_cpu_utilization", "io_workload_cpu_utilization")},
 		)
 	}
 	return out

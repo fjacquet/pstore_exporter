@@ -287,8 +287,14 @@ Legend — **Status**: `emitted` = a powerstore_ metric family already covers it
 
 ### Correctness fixes
 
-One row per Pass 2 ⚠️ finding. Both require a live `--trace` capture to confirm the exact
-field/column spelling the array actually populates before the read is changed.
+One row per Pass 2 ⚠️ finding.
+
+> **Resolved (2026-06-14):** both findings fixed defensively — the reads now prefer the
+> spec-aligned name and fall back to the `avg_*` variant, so they are correct regardless of
+> which the live array populates (no live `--trace` capture required). FS perf:
+> `preferNonZero(bare, avg)` in `derive_filesystem_perf.go`; bulk CPU util: added the
+> `io_workload_cpu_utilization` fallback key in `derive_bulk.go`. Covered by
+> `TestDeriveFileSystemPerfPrefersSpecAlignedFields` and `TestBulkApplianceCPUUtilSpecAlignedColumn`.
 
 | # | Issue | File:line | Fix | Live `--trace` needed? | Effort |
 |---|---|---|---|---|---|
