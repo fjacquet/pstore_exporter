@@ -476,6 +476,51 @@ func (c *ArrayClient) enumerateDrives(ctx context.Context) ([]driveInfo, error) 
 	}
 }
 
+// witnessMetrics fetches the Metro witness service and derives its state series.
+// A 404 means the array predates the witness feature (PowerStoreOS < 3.6) or has
+// no witness configured — that is benign and silently yields no samples. Any
+// other error is logged and degraded to no samples (powerstore_up stays 1).
+func (c *ArrayClient) witnessMetrics(ctx context.Context, topo *Topology) []Sample {
+	witnesses, err := c.enumerateWitnesses(ctx)
+	if err != nil {
+		if !isNotFound(err) {
+			logging.LogWarn(fmt.Sprintf("array %q: enumerate witnesses: %v", c.name, err))
+		}
+		return nil
+	}
+	return deriveWitness(c.name, topo, witnesses)
+}
+
+// enumerateWitnesses lists Metro witness services via the generic API, paginating
+// defensively. The witness list is tiny (typically one), but the pattern mirrors
+// enumerateDrives for consistency. gopowerstore has no typed witness method, so
+// the resource is read with the generic Query escape hatch (see ADR-0009/0015).
+func (c *ArrayClient) enumerateWitnesses(ctx context.Context) ([]witnessInfo, error) {
+	const pageSize = 2000
+	var all []witnessInfo
+	for offset := 0; ; offset += pageSize {
+		qp := c.gp.APIClient().QueryParams().
+			Select("id", "name", "state", "connections").
+			Order("id").
+			Limit(pageSize).
+			Offset(offset)
+
+		var page []witnessInfo
+		_, err := c.gp.APIClient().Query(ctx, api.RequestConfig{
+			Method:      "GET",
+			Endpoint:    "witness",
+			QueryParams: qp,
+		}, &page)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page...)
+		if len(page) < pageSize {
+			return all, nil
+		}
+	}
+}
+
 // BulkCapable reports whether the array supports the bulk CSV metrics API
 // (introduced in PowerStoreOS 4.1). The version is detected via the typed
 // GetSoftwareMajorMinorVersion method and cached. On any detection error it
@@ -532,6 +577,7 @@ func (c *ArrayClient) commonMetrics(ctx context.Context, topo *Topology) []Sampl
 	samples = append(samples, c.volumeGroupPerf(ctx, topo)...)
 	samples = append(samples, c.clusterSpace(ctx, topo)...)
 	samples = append(samples, c.driveMetrics(ctx, topo)...)
+	samples = append(samples, c.witnessMetrics(ctx, topo)...)
 	return samples
 }
 
