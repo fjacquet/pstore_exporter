@@ -41,8 +41,8 @@ func TestDeriveWitnessStateAndConnections(t *testing.T) {
 func TestDeriveWitnessSkipsEmpty(t *testing.T) {
 	topo := NewTopology(gopowerstore.Cluster{ID: "c1"}, nil, nil, nil, nil, nil, nil, nil)
 	witnesses := []witnessInfo{
-		{ID: "", State: "OK"},                                  // no ID → skipped entirely
-		{ID: "w-2", State: ""},                                 // no state → no state series
+		{ID: "", State: "OK"},  // no ID → skipped entirely
+		{ID: "w-2", State: ""}, // no state → no state series
 		{ID: "w-3", State: "OK", Connections: []witnessConnection{{State: "", NodeID: "n-9"}}}, // empty conn state → skipped
 	}
 
