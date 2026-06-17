@@ -2,6 +2,7 @@ package powerstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -38,14 +39,27 @@ type ArrayClient struct {
 	// The typed gopowerstore path cannot be traced: the SDK builds its
 	// *http.Client internally with no transport-injection seam (v1.22.0).
 	trace bool
+	// maxConcurrency caps how many typed API requests the per-entity fan-outs
+	// (replication, FS/VG perf, appliance enumeration) issue at once, to bound
+	// the load this exporter puts on the array. Always >= 1.
+	maxConcurrency int
 }
+
+// defaultMaxConcurrency mirrors models.defaultMaxConcurrency; it is the safety
+// floor applied when an ArrayClient is constructed with a non-positive cap.
+const defaultMaxConcurrency = 16
 
 // Compile-time assertion that ArrayClient satisfies Client.
 var _ Client = (*ArrayClient)(nil)
 
-// NewArrayClient constructs an ArrayClient from an array configuration. trace
-// enables raw bulk-API response-body logging (see tracingRoundTripper).
-func NewArrayClient(cfg models.ArrayConfig, trace bool) (*ArrayClient, error) {
+// NewArrayClient constructs an ArrayClient from an array configuration.
+// maxConcurrency is the resolved per-array fan-out cap (a non-positive value is
+// clamped to defaultMaxConcurrency). trace enables raw bulk-API response-body
+// logging (see tracingRoundTripper).
+func NewArrayClient(cfg models.ArrayConfig, maxConcurrency int, trace bool) (*ArrayClient, error) {
+	if maxConcurrency < 1 {
+		maxConcurrency = defaultMaxConcurrency
+	}
 	if cfg.InsecureSkipVerify {
 		logging.LogWarn(fmt.Sprintf("array %q: InsecureSkipVerify is enabled; TLS certificate verification is disabled", cfg.Name))
 	}
@@ -60,19 +74,67 @@ func NewArrayClient(cfg models.ArrayConfig, trace bool) (*ArrayClient, error) {
 	}
 
 	return &ArrayClient{
-		name:     cfg.Name,
-		interval: gopowerstore.MetricsIntervalEnum(cfg.MetricsInterval()),
-		gp:       gp,
-		endpoint: cfg.Endpoint,
-		username: cfg.Username,
-		password: cfg.Password,
-		insecure: cfg.InsecureSkipVerify,
-		trace:    trace,
+		name:           cfg.Name,
+		interval:       gopowerstore.MetricsIntervalEnum(cfg.MetricsInterval()),
+		gp:             gp,
+		endpoint:       cfg.Endpoint,
+		username:       cfg.Username,
+		password:       cfg.Password,
+		insecure:       cfg.InsecureSkipVerify,
+		trace:          trace,
+		maxConcurrency: maxConcurrency,
 	}, nil
 }
 
 // Name returns the configured array name.
 func (c *ArrayClient) Name() string { return c.name }
+
+// alertPageSize bounds each alert page request. PowerStore's REST API caps an
+// unbounded query at a small server-default page, so we request fixed-size pages
+// explicitly and advance until exhausted (see collectActiveAlerts).
+const alertPageSize = 1000
+
+// collectActiveAlerts pages through the array's ACTIVE alerts and returns them
+// all. gopowerstore's GetAlerts issues a single request and, given empty opts,
+// sets no page limit — so the PowerStore server returns only its default first
+// page in arbitrary id order and the rest are silently dropped. That made
+// powerstore_alert_active under-count on arrays with many alerts (an active
+// alert beyond the first page read as zero). We instead filter server-side to
+// state=ACTIVE (keeping the result set small) and drive pagination explicitly:
+// request fixed-size pages and stop on the first short page. get is injected
+// (c.gp.GetAlerts in production) so the pagination logic is unit-testable.
+func collectActiveAlerts(ctx context.Context, get func(context.Context, gopowerstore.GetAlertsOpts) (*gopowerstore.GetAlertsResponse, error), pageSize int) ([]gopowerstore.Alert, error) {
+	var all []gopowerstore.Alert
+	for start := 0; ; start += pageSize {
+		resp, err := get(ctx, gopowerstore.GetAlertsOpts{
+			RequestPagination: gopowerstore.RequestPagination{PageSize: pageSize, StartIndex: start},
+			Queries:           map[string]string{"state": "eq.ACTIVE"},
+		})
+		if err != nil {
+			return nil, err
+		}
+		if resp == nil {
+			return all, nil
+		}
+		page := resp.Alerts
+		all = append(all, page...)
+		if len(page) < pageSize {
+			return all, nil
+		}
+	}
+}
+
+// isNotFound reports whether err is a gopowerstore 404 (the resource does not
+// exist) — an expected, benign condition we skip silently rather than warn
+// about. Real failures (server errors, request timeouts, context cancellation)
+// are NOT not-found, so callers still surface them as warnings.
+func isNotFound(err error) bool {
+	var apiErr gopowerstore.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.NotFound()
+	}
+	return false
+}
 
 // GetTopology fetches the array inventory and builds lookup indices. A failure to
 // reach the cluster is fatal (the array is down); failures on the optional
@@ -150,14 +212,12 @@ func (c *ArrayClient) GetTopology(ctx context.Context) (*Topology, error) {
 		return nil
 	})
 	g.Go(func() error {
-		resp, err := c.gp.GetAlerts(gctx, gopowerstore.GetAlertsOpts{})
+		a, err := collectActiveAlerts(gctx, c.gp.GetAlerts, alertPageSize)
 		if err != nil {
 			logging.LogWarn(fmt.Sprintf("array %q: get alerts: %v", c.name, err))
 			return nil
 		}
-		if resp != nil {
-			alerts = resp.Alerts
-		}
+		alerts = a
 		return nil
 	})
 	// errgroup always returns nil here because each goroutine swallows errors.
@@ -202,6 +262,7 @@ func (c *ArrayClient) enumerateAppliances(
 
 	results := make([]gopowerstore.ApplianceInstance, len(ids))
 	g2, gctx2 := errgroup.WithContext(ctx)
+	g2.SetLimit(c.maxConcurrency)
 	for i, id := range ids {
 		g2.Go(func() error {
 			a, err := c.gp.GetAppliance(gctx2, id)
@@ -261,17 +322,29 @@ func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []
 	results := make([]resReplication, len(replicated))
 
 	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(c.maxConcurrency)
 	for i, volID := range replicated {
 		g.Go(func() error {
 			var r resReplication
 			if sess, err := c.gp.GetReplicationSessionByLocalResourceID(gctx, volID); err != nil {
-				logging.LogWarn(fmt.Sprintf("array %q: replication session for volume %s: %v", c.name, volID, err))
+				// A volume can carry a protection policy yet have no replication
+				// session (e.g. a snapshot-only policy), which the SDK reports as
+				// a 404 with an empty message. Skip it silently — that empty-reason
+				// warning was pure noise; only real failures warrant a warning.
+				if !isNotFound(err) {
+					logging.LogWarn(fmt.Sprintf("array %q: replication session for volume %s: %v", c.name, volID, err))
+				}
 			} else if sess.ID != "" {
 				r.session = sess
 				r.hasSess = true
 			}
 			if rate, err := c.gp.VolumeMirrorTransferRate(gctx, volID); err != nil {
-				logging.LogWarn(fmt.Sprintf("array %q: mirror transfer rate for volume %s: %v", c.name, volID, err))
+				// Likewise, a non-replicated volume has no mirror transfer rate
+				// (404). Timeouts and other real errors are not not-found, so they
+				// still surface as warnings.
+				if !isNotFound(err) {
+					logging.LogWarn(fmt.Sprintf("array %q: mirror transfer rate for volume %s: %v", c.name, volID, err))
+				}
 			} else {
 				r.transfer = deriveReplicationTransfer(c.name, topo, volID, "volume", rate)
 			}
@@ -298,7 +371,7 @@ func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []
 // Called from BOTH export paths so bulk and per-entity stay at parity; it
 // complements the inventory-derived file-system capacity metrics.
 func (c *ArrayClient) fileSystemPerf(ctx context.Context, topo *Topology) []Sample {
-	return parallelSamples(ctx, topo.FileSystems, func(ctx context.Context, fs gopowerstore.FileSystem) []Sample {
+	return parallelSamples(ctx, topo.FileSystems, c.maxConcurrency, func(ctx context.Context, fs gopowerstore.FileSystem) []Sample {
 		resp, err := c.gp.PerformanceMetricsByFileSystem(ctx, fs.ID, c.interval)
 		if err != nil {
 			logging.LogWarn(fmt.Sprintf("array %q: file system %s perf failed: %v", c.name, fs.ID, err))
@@ -312,7 +385,7 @@ func (c *ArrayClient) fileSystemPerf(ctx context.Context, topo *Topology) []Samp
 // PerformanceMetricsByVg method, one call per volume group, failures logged and
 // skipped. Called from both export paths for parity.
 func (c *ArrayClient) volumeGroupPerf(ctx context.Context, topo *Topology) []Sample {
-	return parallelSamples(ctx, topo.VolumeGroups, func(ctx context.Context, vg gopowerstore.VolumeGroup) []Sample {
+	return parallelSamples(ctx, topo.VolumeGroups, c.maxConcurrency, func(ctx context.Context, vg gopowerstore.VolumeGroup) []Sample {
 		resp, err := c.gp.PerformanceMetricsByVg(ctx, vg.ID, c.interval)
 		if err != nil {
 			logging.LogWarn(fmt.Sprintf("array %q: volume group %s perf failed: %v", c.name, vg.ID, err))
@@ -322,16 +395,18 @@ func (c *ArrayClient) volumeGroupPerf(ctx context.Context, topo *Topology) []Sam
 	})
 }
 
-// parallelSamples fans fn out across items concurrently and concatenates the
-// per-item samples in item order. Each goroutine writes its own slot, so the
-// collection needs no locking. Per-item failures are the callback's concern
-// (return nil to contribute nothing).
-func parallelSamples[T any](ctx context.Context, items []T, fn func(context.Context, T) []Sample) []Sample {
+// parallelSamples fans fn out across items and concatenates the per-item samples
+// in item order. At most limit invocations run concurrently, bounding the load
+// on the array. Each goroutine writes its own slot, so the collection needs no
+// locking. Per-item failures are the callback's concern (return nil to
+// contribute nothing).
+func parallelSamples[T any](ctx context.Context, items []T, limit int, fn func(context.Context, T) []Sample) []Sample {
 	if len(items) == 0 {
 		return nil
 	}
 	per := make([][]Sample, len(items))
 	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(limit)
 	for i, item := range items {
 		g.Go(func() error {
 			per[i] = fn(gctx, item)

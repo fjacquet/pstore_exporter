@@ -12,6 +12,7 @@ server:
 collection:
   interval: "30s"      # how often the background loop polls every array
   timeout: "20s"       # per-array collection timeout
+  maxConcurrency: 16   # fleet-wide cap on concurrent API requests per array (default 16)
 
 opentelemetry:
   metrics:             # OTLP metric push
@@ -32,6 +33,7 @@ arrays:
     password: "${PSTORE1_PASSWORD}"
     insecureSkipVerify: true
     # interval: Five_Mins   # optional: override the stats interval on the PowerStore side
+    # maxConcurrency: 8     # optional: override the fleet concurrency cap for this array
 ```
 
 ## Sections
@@ -42,6 +44,7 @@ arrays:
 | `server` | `logName` | Log file path (use an **absolute** path so it resolves the same in containers); empty string logs to stdout (recommended under systemd/k8s). If the path is not writable, logging falls back to stdout with a warning instead of failing to start. |
 | `collection` | `interval` | Background poll period for every array. Matches Prometheus scrape cadence well at `30s`. |
 | `collection` | `timeout` | Per-array timeout; a slow/unreachable array fails fast without blocking others. |
+| `collection` | `maxConcurrency` | Cap on concurrent PowerStore API requests per array's per-entity fan-outs (replication, FS/VG perf, appliance enumeration). Default `16`. Lower it to reduce load on a busy/degraded array — cycles run slower, so a larger `timeout` may be needed. Override per array with `arrays[].maxConcurrency`. |
 | `opentelemetry.metrics` | `enabled`, `endpoint`, `interval` | OTLP gRPC metric push. |
 | `opentelemetry.tracing` | `enabled`, `endpoint`, `samplingRate` | OTLP gRPC tracing for diagnosing slow cycles. |
 | `arrays[]` | `name` | Unique; becomes the `array` label/attribute on every metric. |

@@ -237,8 +237,9 @@ func (s *Server) initOTLP(cfg *models.Config) error {
 // cannot be built is logged and skipped; if no clients build at all, startup fails.
 func buildClients(cfg *models.Config) ([]powerstore.Client, error) {
 	clients := make([]powerstore.Client, 0, len(cfg.Arrays))
+	fleetConcurrency := cfg.GetMaxConcurrency()
 	for _, a := range cfg.Arrays {
-		client, err := powerstore.NewArrayClient(a, traceAPI)
+		client, err := powerstore.NewArrayClient(a, a.MaxConcurrencyOr(fleetConcurrency), traceAPI)
 		if err != nil {
 			log.Warnf("array %q: failed to create client, skipping: %v", a.Name, err)
 			continue
