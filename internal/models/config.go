@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+// defaultMaxConcurrency is the built-in fan-out cap used when neither the array
+// nor the fleet configures one. It sits well below gopowerstore's internal
+// 60-slot request semaphore, leaving headroom for sequential late-stage calls.
+const defaultMaxConcurrency = 16
+
 // ArrayConfig holds the connection details for one PowerStore array. One exporter
 // process monitors many arrays; Name becomes the `array` label on every metric.
 type ArrayConfig struct {
@@ -20,6 +25,11 @@ type ArrayConfig struct {
 	// Interval is the per-entity metrics interval for the fallback path
 	// (Twenty_Sec | Five_Mins | One_Hour | One_Day). Defaults to Five_Mins.
 	Interval string `yaml:"interval"`
+	// MaxConcurrency caps how many PowerStore API requests this array's
+	// collection fans out at once. 0 inherits the fleet default
+	// (collection.maxConcurrency); lower it to lighten the exporter's load on a
+	// busy or degraded array (at the cost of slower collection cycles).
+	MaxConcurrency int `yaml:"maxConcurrency"`
 }
 
 // MetricsInterval returns the configured per-entity interval or the Five_Mins default.
@@ -59,6 +69,10 @@ type Config struct {
 	Collection struct {
 		Interval string `yaml:"interval"`
 		Timeout  string `yaml:"timeout"`
+		// MaxConcurrency is the fleet-wide default cap on concurrent PowerStore
+		// API requests per array (see ArrayConfig.MaxConcurrency). 0 means use
+		// defaultMaxConcurrency.
+		MaxConcurrency int `yaml:"maxConcurrency"`
 	} `yaml:"collection"`
 
 	OpenTelemetry struct {
@@ -129,6 +143,9 @@ func (c *Config) validateCollection() error {
 	if _, err := time.ParseDuration(c.Collection.Timeout); err != nil {
 		return fmt.Errorf("invalid collection timeout '%s': %w (expected 20s)", c.Collection.Timeout, err)
 	}
+	if c.Collection.MaxConcurrency < 0 {
+		return fmt.Errorf("collection maxConcurrency must be >= 0 (0 uses the default %d), got %d", defaultMaxConcurrency, c.Collection.MaxConcurrency)
+	}
 	return nil
 }
 
@@ -153,6 +170,9 @@ func (c *Config) validateArrays() error {
 		}
 		if a.Password == "" {
 			return fmt.Errorf("array %q: password is required (set password or passwordFile)", a.Name)
+		}
+		if a.MaxConcurrency < 0 {
+			return fmt.Errorf("array %q: maxConcurrency must be >= 0 (0 inherits the fleet default), got %d", a.Name, a.MaxConcurrency)
 		}
 	}
 	return nil
@@ -194,6 +214,24 @@ func (c *Config) GetCollectionInterval() time.Duration {
 // GetCollectionTimeout returns the per-array timeout.
 func (c *Config) GetCollectionTimeout() time.Duration {
 	return mustDuration(c.Collection.Timeout, 20*time.Second)
+}
+
+// GetMaxConcurrency returns the fleet-wide default fan-out cap, falling back to
+// defaultMaxConcurrency when unset (0).
+func (c *Config) GetMaxConcurrency() int {
+	if c.Collection.MaxConcurrency > 0 {
+		return c.Collection.MaxConcurrency
+	}
+	return defaultMaxConcurrency
+}
+
+// MaxConcurrencyOr returns this array's fan-out cap, falling back to the supplied
+// fleet default when the array does not set one (0).
+func (a ArrayConfig) MaxConcurrencyOr(fleetDefault int) int {
+	if a.MaxConcurrency > 0 {
+		return a.MaxConcurrency
+	}
+	return fleetDefault
 }
 
 // GetMetricsPushInterval returns the OTLP metric push period.

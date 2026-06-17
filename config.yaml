@@ -7,6 +7,10 @@ server:
 collection:
   interval: "30s"
   timeout: "20s"
+  # maxConcurrency: 16   # fleet-wide cap on concurrent API requests per array.
+                         # Lower it to lighten load on a busy/degraded array
+                         # (slower cycles — you may then need a larger timeout).
+                         # Default 16; override per array below.
 
 opentelemetry:
   metrics:
@@ -30,3 +34,4 @@ arrays:
     password: "${PSTORE1_PASSWORD}"
     insecureSkipVerify: true
     # interval: Five_Mins
+    # maxConcurrency: 8     # optional: override the fleet cap just for this array
