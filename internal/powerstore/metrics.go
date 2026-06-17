@@ -91,6 +91,27 @@ func driveStateLabels(arrayName, clusterID, driveID, driveName, applianceID, sta
 	)
 }
 
+// witnessStateLabels builds the label set for the Metro witness service info
+// series. `state` is the WitnessStateEnum value as a string.
+func witnessStateLabels(arrayName, clusterID, witnessID, witnessName, state string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"witness_id", witnessID},
+		Label{"witness_name", witnessName},
+		Label{"state", state},
+	)
+}
+
+// witnessConnectionLabels builds the per-node connection label set for the Metro
+// witness. `state` is the WitnessConnectionStateEnum value as a string.
+func witnessConnectionLabels(arrayName, clusterID, witnessID, applianceID, nodeID, state string) []Label {
+	return append(baseLabels(arrayName, clusterID),
+		Label{"witness_id", witnessID},
+		Label{"appliance_id", applianceID},
+		Label{"node_id", nodeID},
+		Label{"state", state},
+	)
+}
+
 // volumeGroupLabels builds the canonical volume-group label set.
 func volumeGroupLabels(arrayName, clusterID, vgName, vgID string) []Label {
 	return append(baseLabels(arrayName, clusterID),
