@@ -151,6 +151,8 @@ paths (see [ADR-0009](adr/0009-expand-metric-coverage-library-first.md)).
 | `powerstore_replication_rpo_seconds` | `rule_id`, `remote_system_id` | Configured RPO of a replication rule, in seconds (`0` = synchronous). |
 | `powerstore_replication_transfer_rate_bytes_per_second` | `resource_id`, `resource_type` | Current mirror replication throughput for the resource. |
 | `powerstore_replication_data_remaining_bytes` | `resource_id`, `resource_type` | Outstanding data still to be replicated (backlog / RPO-risk indicator). |
+| `powerstore_metro_witness_state` | `witness_id`, `witness_name`, `state` | Info series, always `1`; the Metro witness service's overall state is the `state` label (`OK`, `Partially_Connected`, `Disconnected`, `Initializing`, `Deleting`). |
+| `powerstore_metro_witness_connection_state` | `witness_id`, `appliance_id`, `node_id`, `state` | Info series, always `1`; one per node, with the node's connection to the witness in the `state` label (`OK`, `Disconnected`, `Initializing`). |
 
 The `state` metric follows the enum/info idiom: alert on undesirable states with a label
 matcher rather than a numeric threshold — `powerstore_replication_session_state` carries the
@@ -190,6 +192,11 @@ powerstore_replication_session_state{state=~"Error|Fractured|System_Paused|Pause
 
 # Replication backlog exceeding 1 GiB
 powerstore_replication_data_remaining_bytes > 1073741824
+
+# Metro witness degraded or unreachable
+powerstore_metro_witness_state{state=~"Disconnected|Partially_Connected"}
+# A specific node cannot reach the witness
+powerstore_metro_witness_connection_state{state="Disconnected"}
 
 # Drives that are not healthy
 powerstore_drive_state{state!="Healthy"}

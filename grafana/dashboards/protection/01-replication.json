@@ -206,6 +206,145 @@
       "targets": [
         { "refId": "A", "expr": "powerstore_replication_transfer_rate_bytes_per_second{array=~\"$array\"}", "legendFormat": "{{resource_id}}" }
       ]
+    },
+    {
+      "id": 102,
+      "type": "row",
+      "title": "Metro Witness",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "collapsed": false
+    },
+    {
+      "id": 103,
+      "title": "Metro Witness State",
+      "type": "table",
+      "description": "Overall Metro witness service state per array. Non-OK = automatic Metro failover at risk.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "state" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "OK": { "color": "green", "index": 0 } } },
+                  { "type": "value", "options": { "Initializing": { "color": "yellow", "index": 1 } } },
+                  { "type": "value", "options": { "Partially_Connected": { "color": "orange", "index": 2 } } },
+                  { "type": "value", "options": { "Disconnected": { "color": "red", "index": 3 } } },
+                  { "type": "value", "options": { "Deleting": { "color": "orange", "index": 4 } } }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "cellHeight": "sm" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "powerstore_metro_witness_state{array=~\"$array\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "__name__": true,
+              "array": true,
+              "cluster_id": true
+            },
+            "indexByName": {
+              "witness_id": 0,
+              "witness_name": 1,
+              "state": 2
+            },
+            "renameByName": {
+              "witness_id": "Witness ID",
+              "witness_name": "Witness Name",
+              "state": "State"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 104,
+      "title": "Metro Witness Node Connectivity",
+      "type": "table",
+      "description": "Per-node connection state to the Metro witness. Disconnected nodes cannot participate in automatic Metro failover.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "state" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "OK": { "color": "green", "index": 0 } } },
+                  { "type": "value", "options": { "Initializing": { "color": "yellow", "index": 1 } } },
+                  { "type": "value", "options": { "Disconnected": { "color": "red", "index": 2 } } }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "cellHeight": "sm" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "powerstore_metro_witness_connection_state{array=~\"$array\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        { "id": "labelsToFields", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true,
+              "__name__": true,
+              "array": true,
+              "cluster_id": true
+            },
+            "indexByName": {
+              "witness_id": 0,
+              "appliance_id": 1,
+              "node_id": 2,
+              "state": 3
+            },
+            "renameByName": {
+              "witness_id": "Witness ID",
+              "appliance_id": "Appliance",
+              "node_id": "Node",
+              "state": "State"
+            }
+          }
+        }
+      ]
     }
   ]
 }
