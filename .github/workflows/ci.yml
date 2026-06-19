@@ -1,73 +1,11 @@
 name: CI
-
 on:
-  push:
-    branches: [main]
+  push: { branches: [main] }
   pull_request:
-
 permissions:
   contents: read
-
 jobs:
-  quality:
-    name: Lint, vet, test, vuln
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
-        with:
-          go-version-file: go.mod
-          cache: true
-      - name: Install tooling
-        run: make tools
-      - name: Run CI gate (fmt, vet, lint, test -race, govulncheck)
-        run: make ci
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: coverage
-          path: coverage.out
-          if-no-files-found: ignore
-
-  sbom:
-    name: Generate SBOM
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
-        with:
-          go-version-file: go.mod
-          cache: true
-      # syft is the SBOM engine GoReleaser shells out to.
-      - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
-      # Single source of truth: GoReleaser produces the same CycloneDX SBOMs it
-      # attaches to releases, here in snapshot mode (no publish/sign/image).
-      - uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
-        with:
-          version: "~> v2"
-          args: release --snapshot --clean --skip=publish,sign,docker,homebrew
-      - name: Upload SBOM
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: sbom
-          path: dist/*.cdx.json
-
-  semgrep:
-    name: Semgrep
-    runs-on: ubuntu-latest
-    # Intentionally NOT digest-pinned: a security scanner should run the latest
-    # engine and rulesets. Pinning the GitHub Actions (above) is what hardens the
-    # supply chain; freezing the scanner would only make it stale.
-    container:
-      image: semgrep/semgrep
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          persist-credentials: false
-      - name: Semgrep scan
-        run: semgrep scan --config auto --error --skip-unknown-extensions
+  ci:
+    uses: fjacquet/ci/.github/workflows/go-ci.yml@v1
+  security:
+    uses: fjacquet/ci/.github/workflows/go-security.yml@v1
