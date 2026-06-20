@@ -73,3 +73,6 @@ nav:
       - "0011: OTLP Push Export": adr/0011-otlp-push-export.md
       - "0012: Credentials via Environment and File": adr/0012-credentials-via-env-and-file.md
       - "0013: --trace Transport Scope": adr/0013-trace-transport-scope.md
+
+extra:
+  version: v0.10.1
