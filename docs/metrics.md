@@ -10,6 +10,7 @@ array name) plus `cluster_id` (the PowerStore system id).
 | `powerstore_up` | `array` | `1` if the array was scraped successfully this cycle, else `0`. |
 | `powerstore_last_scrape_timestamp_seconds` | `array` | Unix time of the last successful collection. |
 | `powerstore_array_bulk_api` | `array` | `1` if bulk CSV collection is active for this array, `0` if per-entity REST fallback is used. |
+| `pstore_exporter_build_info` | `version`, `goversion` | Exporter build information; constant `1`, exposing the running exporter version and Go version. Exporter-level (no `array`/`cluster_id` label). |
 
 ## Volume metrics
 
