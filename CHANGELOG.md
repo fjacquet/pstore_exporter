@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `pstore_exporter_build_info{version, goversion}` metric (constant `1`) exposing
+  the running exporter version and Go version, following the standard Prometheus
+  build-info pattern. Exporter-level (no `array` label).
+
 ## [0.3.1] - 2026-06-06
 
 Internal code-quality cleanup of the metric-coverage collectors. No behavior
