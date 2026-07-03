@@ -7,11 +7,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-07-03
+
 ### Added
 
 - `pstore_exporter_build_info{version, goversion}` metric (constant `1`) exposing
   the running exporter version and Go version, following the standard Prometheus
   build-info pattern. Exporter-level (no `array` label).
+
+## [0.10.2] - 2026-07-01
+
+### Changed
+
+- Documented handling of special characters in the monitoring password.
+- Switched the MkDocs site to the brand icon for its favicon and logo.
+
+## [0.10.1] - 2026-06-20
+
+### Added
+
+- Metro witness observability metrics.
+
+### Changed
+
+- Migrated CI to the `fjacquet/ci` reusable make-based workflows and made the
+  `security` job advisory to match the fleet default.
+
+## [0.10.0] - 2026-06-17
+
+### Fixed
+
+- PowerStore collector now paginates alerts, silences benign 404s, and caps
+  fan-out concurrency.
+
+## [0.9.1] - 2026-06-16
+
+### Added
+
+- Helm chart with lockstep publishing alongside the container image.
+
+## [0.9.0] - 2026-06-14
+
+### Changed
+
+- **BREAKING:** canonical metrics port is now `9446`.
+
+### Added
+
+- Node Exporter Full (1860) Grafana dashboard.
+
+## [0.8.0] - 2026-06-14
+
+### Changed
+
+- Reworked the Grafana dashboards: taxonomy, design system, and metric coverage.
+
+## [0.7.1] - 2026-06-14
+
+### Changed
+
+- Added ADRs recording the config-reload, OTLP-push, credentials, and
+  trace-scope decisions.
+
+## [0.7.0] - 2026-06-14
+
+### Changed
+
+- Reconciled the exporter against the PowerStore REST API 4.4.0 reference.
+
+### Fixed
+
+- Spec-aligned the PowerStoreOS 4.4.0 performance fields and added Windows
+  release builds.
+
+## [0.6.1] - 2026-06-12
+
+### Fixed
+
+- Docker image copies the CA bundle from the builder stage instead of installing
+  it via `apk`.
+
+## [0.6.0] - 2026-06-12
+
+### Added
+
+- Native `.env` loading at startup (no-override semantics).
+
+## [0.5.0] - 2026-06-11
+
+### Added
+
+- `${ENV}` expansion in the configured username and parameterization of the
+  Compose stack via `PSTORE1_*` variables.
+
+## [0.4.0] - 2026-06-11
+
+### Added
+
+- `--trace` flag and `--once --debug` sample dump for live-array validation.
 
 ## [0.3.1] - 2026-06-06
 
@@ -89,7 +182,20 @@ dependency bump). See `docs/reconciliation-2026-06-05.md` and ADR-0009.
 - MkDocs-Material documentation site.
 - GitHub Actions workflows for CI, release, and docs publication.
 
-[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.3.1...main
+[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.10.3...main
+[0.10.3]: https://github.com/fjacquet/pstore_exporter/compare/v0.10.2...v0.10.3
+[0.10.2]: https://github.com/fjacquet/pstore_exporter/compare/v0.10.1...v0.10.2
+[0.10.1]: https://github.com/fjacquet/pstore_exporter/compare/v0.10.0...v0.10.1
+[0.10.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.9.1...v0.10.0
+[0.9.1]: https://github.com/fjacquet/pstore_exporter/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/fjacquet/pstore_exporter/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.6.1...v0.7.0
+[0.6.1]: https://github.com/fjacquet/pstore_exporter/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/fjacquet/pstore_exporter/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/fjacquet/pstore_exporter/releases/tag/v0.2.0
