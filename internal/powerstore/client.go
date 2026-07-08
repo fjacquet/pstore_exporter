@@ -309,6 +309,10 @@ func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []
 	// protection-policy probe cannot see).
 	sessions, err := c.enumerateReplicationSessions(ctx)
 	if err != nil {
+		// A single enumeration call means one transient failure drops both
+		// session-state and transfer/backlog for this array this cycle; it
+		// self-heals on the next scrape (the same graceful-degradation profile
+		// already accepted for the drive/witness generic-API enumerations).
 		logging.LogWarn(fmt.Sprintf("array %q: enumerate replication sessions: %v", c.name, err))
 		return samples
 	}

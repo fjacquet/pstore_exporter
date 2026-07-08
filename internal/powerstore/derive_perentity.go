@@ -86,8 +86,9 @@ func chartableFileSystem(fs gopowerstore.FileSystem) bool {
 	return fs.SizeTotal > 0
 }
 
-// deriveFileSystemCapacity emits file-system capacity from inventory (no metrics call,
-// since gopowerstore v1.22.0 has no PerformanceMetricsByFileSystem method).
+// deriveFileSystemCapacity emits file-system capacity (size) from inventory; live
+// file-system performance is collected separately by fileSystemPerf. Inactive
+// stubs with a null/zero provisioned size are skipped via chartableFileSystem.
 func deriveFileSystemCapacity(array string, topo *Topology) []Sample {
 	clusterID := topo.ClusterID()
 	var out []Sample
