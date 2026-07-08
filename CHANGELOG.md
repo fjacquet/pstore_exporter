@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-07-08
+
+### Fixed
+
+- `powerstore_drive_state` and `powerstore_drive_wear_level_ratio` were never
+  emitted: the drive enumeration selected the non-existent
+  `hardware.life_cycle_state` property, which returned an error and dropped all
+  drive metrics. Corrected to the `lifecycle_state` property.
+- Replication transfer and backlog metrics
+  (`powerstore_replication_transfer_rate_bytes_per_second`,
+  `powerstore_replication_data_remaining_bytes`) no longer emit phantom `0`/`0`
+  series for protected volumes that have no active replication session.
+- Inactive metro/replication-destination file systems (which report `size_total`
+  as null, decoded to `0`) no longer emit misleading size-0 capacity and
+  performance series.
+
+### Added
+
+- `powerstore_replication_session_state` now covers Metro sessions
+  (`role=Metro_Preferred`): replication sessions are enumerated via the generic
+  `replication_session` API instead of a protection-policy-gated probe, so Metro
+  sessions — previously invisible to the exporter — are captured.
+- `--debug` now logs a per-array count of bulk volume rows that could not be
+  resolved to inventory (snapshots/clones). The emitted `volume_name` label is
+  unchanged.
+
 ## [0.10.3] - 2026-07-03
 
 ### Added
@@ -182,7 +208,8 @@ dependency bump). See `docs/reconciliation-2026-06-05.md` and ADR-0009.
 - MkDocs-Material documentation site.
 - GitHub Actions workflows for CI, release, and docs publication.
 
-[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.10.3...main
+[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.11.0...main
+[0.11.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/fjacquet/pstore_exporter/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/fjacquet/pstore_exporter/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/fjacquet/pstore_exporter/compare/v0.10.0...v0.10.1
