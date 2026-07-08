@@ -15,7 +15,7 @@ func deriveVolumePerf(array string, topo *Topology, resp []gopowerstore.Performa
 	latest := latestByID(resp, func(r gopowerstore.PerformanceMetricsByVolumeResponse) string { return r.VolumeID })
 	var out []Sample
 	for volID, r := range latest {
-		volName, applID := topo.VolumeInfo(volID)
+		volName, applID, _ := topo.VolumeInfo(volID)
 		if volName == "" {
 			volName = volID
 		}
