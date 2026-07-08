@@ -102,6 +102,10 @@ func TestReplicatedVolumeResources(t *testing.T) {
 		{ID: "rs-2", ResourceType: "file_system", LocalResourceID: "fs-1"}, // not a volume → skip
 		{ID: "rs-3", ResourceType: "volume", LocalResourceID: ""},          // no id → skip
 		{ID: "rs-4", ResourceType: "volume", LocalResourceID: "v-2"},
+		// A volume protected by both Metro and an async DR session (3-site
+		// protection) appears in two volume-type sessions with the same
+		// LocalResourceID — must be deduped to a single entry.
+		{ID: "rs-5", ResourceType: "volume", LocalResourceID: "v-1"},
 	}
 	got := replicatedVolumeResources(sessions)
 	want := []string{"v-1", "v-2"}
