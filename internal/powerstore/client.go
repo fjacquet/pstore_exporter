@@ -445,6 +445,7 @@ func (c *ArrayClient) driveMetrics(ctx context.Context, topo *Topology) []Sample
 		logging.LogWarn(fmt.Sprintf("array %q: enumerate drives: %v", c.name, err))
 		return nil
 	}
+	logging.LogDebug(fmt.Sprintf("array %q: enumerated %d drives", c.name, len(drives)))
 	return deriveDrives(c.name, topo, drives)
 }
 
@@ -455,7 +456,7 @@ func (c *ArrayClient) enumerateDrives(ctx context.Context) ([]driveInfo, error) 
 	for offset := 0; ; offset += pageSize {
 		qp := c.gp.APIClient().QueryParams().
 			RawArg("type", "eq.Drive").
-			Select("id", "name", "appliance_id", "life_cycle_state", "extra_details").
+			Select("id", "name", "appliance_id", "lifecycle_state", "extra_details").
 			Order("id").
 			Limit(pageSize).
 			Offset(offset)

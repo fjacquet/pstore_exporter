@@ -15,7 +15,7 @@ type driveInfo struct {
 	ID             string            `json:"id"`
 	Name           string            `json:"name"`
 	ApplianceID    string            `json:"appliance_id"`
-	LifeCycleState string            `json:"life_cycle_state"`
+	LifeCycleState string            `json:"lifecycle_state"`
 	ExtraDetails   driveExtraDetails `json:"extra_details"`
 }
 

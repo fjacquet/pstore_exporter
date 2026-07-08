@@ -115,9 +115,12 @@ Each port metric carries: `array`, `cluster_id`, `port_name`, `port_id`, `port_t
 
 ## Drive metrics
 
-Each drive metric carries: `array`, `cluster_id`, `drive_id`, `drive_name`, `appliance_id`.
-Drives are enumerated via a single generic GET on the `hardware` resource (PowerStore exposes
-no typed list-drives method; see [ADR-0009](adr/0009-expand-metric-coverage-library-first.md)).
+Each drive metric carries: `array`, `cluster_id`, `drive_id`, `drive_name`, `appliance_id`, and
+is emitted once per drive on the array. Drives are enumerated via a single generic GET on the
+`hardware` resource (PowerStore exposes no typed list-drives method; see
+[ADR-0009](adr/0009-expand-metric-coverage-library-first.md)). Prior to the `lifecycle_state`
+property fix, the enumeration query 400'd and both metrics below were silently absent from
+`/metrics`.
 
 | Metric | Labels | Description |
 |---|---|---|

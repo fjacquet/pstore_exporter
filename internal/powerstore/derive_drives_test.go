@@ -1,6 +1,7 @@
 package powerstore
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/dell/gopowerstore"
@@ -41,5 +42,27 @@ func TestDeriveDrivesEmpty(t *testing.T) {
 	topo := NewTopology(gopowerstore.Cluster{ID: "c1"}, nil, nil, nil, nil, nil, nil, nil)
 	if got := deriveDrives("p1", topo, nil); len(got) != 0 {
 		t.Fatalf("no drives should emit nothing, got %+v", got)
+	}
+}
+
+func TestDriveInfoDecodesLifecycleState(t *testing.T) {
+	// Shape of a hardware?type=eq.Drive row. The PowerStore property is
+	// "lifecycle_state" (not "life_cycle_state"); a mismatched struct tag
+	// silently decodes it to "" — which is the bug this guards against.
+	const payload = `[{"id":"d-1","name":"Drive-0","appliance_id":"a-1",` +
+		`"lifecycle_state":"Healthy","extra_details":{"drive_wear_level":30}}]`
+
+	var got []driveInfo
+	if err := json.Unmarshal([]byte(payload), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("want 1 drive, got %d", len(got))
+	}
+	if got[0].LifeCycleState != "Healthy" {
+		t.Fatalf("lifecycle_state must decode into LifeCycleState; got %q", got[0].LifeCycleState)
+	}
+	if got[0].ExtraDetails.DriveWearLevel == nil || *got[0].ExtraDetails.DriveWearLevel != 30 {
+		t.Fatalf("drive_wear_level must decode; got %v", got[0].ExtraDetails.DriveWearLevel)
 	}
 }
