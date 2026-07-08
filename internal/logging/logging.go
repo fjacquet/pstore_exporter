@@ -19,6 +19,12 @@ func LogInfo(msg string) {
 	log.WithFields(log.Fields{"job": programName}).Info(msg)
 }
 
+// LogDebug logs a debug message tagged with the program name. It emits only when
+// the log level is Debug (the --debug flag), so it is safe for per-cycle detail.
+func LogDebug(msg string) {
+	log.WithFields(log.Fields{"job": programName}).Debug(msg)
+}
+
 // LogWarn logs a warning message tagged with the program name. It is used for
 // expected, recoverable conditions (graceful degradation) that should not be
 // reported at error severity.

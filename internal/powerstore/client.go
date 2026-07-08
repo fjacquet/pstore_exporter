@@ -285,84 +285,59 @@ func (c *ArrayClient) enumerateAppliances(
 	return appliances
 }
 
-// replicationMetrics collects replication session state, RPO, and transfer metrics
-// via typed gopowerstore methods. It is library-first: RPO comes from the
-// cluster-wide GetReplicationRules; sessions and transfer rates are enumerated
-// from the volumes that carry a protection policy (PowerStore exposes no
-// list-replication-sessions method), one typed call per replicated volume.
-// Per-call failures are logged and skipped (graceful degradation). It is called
-// from BOTH export paths so the bulk and per-entity outputs stay at parity.
+// replicationMetrics collects replication session state, RPO, and transfer
+// metrics. It is library-first except for session enumeration: RPO comes from
+// the cluster-wide GetReplicationRules; sessions are enumerated via the generic
+// API (PowerStore exposes no typed list-replication-sessions method), which
+// captures every session — including Metro sessions that are not driven by a
+// protection policy. Transfer/backlog is then queried only for the volume-type
+// sessions found, avoiding phantom 0/0 series for policy volumes with no
+// session. Per-call failures are logged and skipped (graceful degradation). It
+// is called from BOTH export paths so the bulk and per-entity outputs stay at
+// parity.
 func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []Sample {
 	var samples []Sample
 
+	// RPO is per-rule cluster config, independent of active sessions.
 	if rules, err := c.gp.GetReplicationRules(ctx); err != nil {
 		logging.LogWarn(fmt.Sprintf("array %q: get replication rules: %v", c.name, err))
 	} else {
 		samples = append(samples, deriveReplicationRules(c.name, topo, rules)...)
 	}
 
-	// Candidate resources: volumes with a protection policy may have a
-	// replication session. Volumes without one are skipped to avoid a flood of
-	// not-found lookups.
-	replicated := make([]string, 0, len(topo.Volumes))
-	for _, v := range topo.Volumes {
-		if v.ProtectionPolicyID != "" {
-			replicated = append(replicated, v.ID)
-		}
-	}
-	if len(replicated) == 0 {
+	// Enumerate all sessions (captures async, sync, AND Metro sessions that a
+	// protection-policy probe cannot see).
+	sessions, err := c.enumerateReplicationSessions(ctx)
+	if err != nil {
+		// A single enumeration call means one transient failure drops both
+		// session-state and transfer/backlog for this array this cycle; it
+		// self-heals on the next scrape (the same graceful-degradation profile
+		// already accepted for the drive/witness generic-API enumerations).
+		logging.LogWarn(fmt.Sprintf("array %q: enumerate replication sessions: %v", c.name, err))
 		return samples
 	}
-
-	type resReplication struct {
-		session  gopowerstore.ReplicationSession
-		hasSess  bool
-		transfer []Sample
-	}
-	results := make([]resReplication, len(replicated))
-
-	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(c.maxConcurrency)
-	for i, volID := range replicated {
-		g.Go(func() error {
-			var r resReplication
-			if sess, err := c.gp.GetReplicationSessionByLocalResourceID(gctx, volID); err != nil {
-				// A volume can carry a protection policy yet have no replication
-				// session (e.g. a snapshot-only policy), which the SDK reports as
-				// a 404 with an empty message. Skip it silently — that empty-reason
-				// warning was pure noise; only real failures warrant a warning.
-				if !isNotFound(err) {
-					logging.LogWarn(fmt.Sprintf("array %q: replication session for volume %s: %v", c.name, volID, err))
-				}
-			} else if sess.ID != "" {
-				r.session = sess
-				r.hasSess = true
-			}
-			if rate, err := c.gp.VolumeMirrorTransferRate(gctx, volID); err != nil {
-				// Likewise, a non-replicated volume has no mirror transfer rate
-				// (404). Timeouts and other real errors are not not-found, so they
-				// still surface as warnings.
-				if !isNotFound(err) {
-					logging.LogWarn(fmt.Sprintf("array %q: mirror transfer rate for volume %s: %v", c.name, volID, err))
-				}
-			} else {
-				r.transfer = deriveReplicationTransfer(c.name, topo, volID, "volume", rate)
-			}
-			results[i] = r // distinct index per goroutine — no lock needed
-			return nil
-		})
-	}
-	_ = g.Wait()
-
-	var sessions []gopowerstore.ReplicationSession
-	for _, r := range results {
-		if r.hasSess {
-			sessions = append(sessions, r.session)
-		}
-		samples = append(samples, r.transfer...)
-	}
 	samples = append(samples, deriveReplicationSessions(c.name, topo, sessions)...)
+
+	// Transfer/backlog only for volumes that actually have a session — no phantom
+	// 0/0 series for policy volumes with no session.
+	samples = append(samples, c.replicationTransfers(ctx, topo, replicatedVolumeResources(sessions))...)
 	return samples
+}
+
+// replicationTransfers fans out the mirror transfer rate query across the given
+// volume ids, emitting transfer-rate and data-remaining samples. A not-found is
+// skipped silently (no active transfer); other errors are logged.
+func (c *ArrayClient) replicationTransfers(ctx context.Context, topo *Topology, volumeIDs []string) []Sample {
+	return parallelSamples(ctx, volumeIDs, c.maxConcurrency, func(ctx context.Context, volID string) []Sample {
+		rate, err := c.gp.VolumeMirrorTransferRate(ctx, volID)
+		if err != nil {
+			if !isNotFound(err) {
+				logging.LogWarn(fmt.Sprintf("array %q: mirror transfer rate for volume %s: %v", c.name, volID, err))
+			}
+			return nil
+		}
+		return deriveReplicationTransfer(c.name, topo, volID, "volume", rate)
+	})
 }
 
 // fileSystemPerf collects live per-file-system performance via the typed
@@ -371,7 +346,13 @@ func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []
 // Called from BOTH export paths so bulk and per-entity stay at parity; it
 // complements the inventory-derived file-system capacity metrics.
 func (c *ArrayClient) fileSystemPerf(ctx context.Context, topo *Topology) []Sample {
-	return parallelSamples(ctx, topo.FileSystems, c.maxConcurrency, func(ctx context.Context, fs gopowerstore.FileSystem) []Sample {
+	chartable := make([]gopowerstore.FileSystem, 0, len(topo.FileSystems))
+	for _, fs := range topo.FileSystems {
+		if chartableFileSystem(fs) {
+			chartable = append(chartable, fs)
+		}
+	}
+	return parallelSamples(ctx, chartable, c.maxConcurrency, func(ctx context.Context, fs gopowerstore.FileSystem) []Sample {
 		resp, err := c.gp.PerformanceMetricsByFileSystem(ctx, fs.ID, c.interval)
 		if err != nil {
 			logging.LogWarn(fmt.Sprintf("array %q: file system %s perf failed: %v", c.name, fs.ID, err))
@@ -445,6 +426,7 @@ func (c *ArrayClient) driveMetrics(ctx context.Context, topo *Topology) []Sample
 		logging.LogWarn(fmt.Sprintf("array %q: enumerate drives: %v", c.name, err))
 		return nil
 	}
+	logging.LogDebug(fmt.Sprintf("array %q: enumerated %d drives", c.name, len(drives)))
 	return deriveDrives(c.name, topo, drives)
 }
 
@@ -455,7 +437,7 @@ func (c *ArrayClient) enumerateDrives(ctx context.Context) ([]driveInfo, error) 
 	for offset := 0; ; offset += pageSize {
 		qp := c.gp.APIClient().QueryParams().
 			RawArg("type", "eq.Drive").
-			Select("id", "name", "appliance_id", "life_cycle_state", "extra_details").
+			Select("id", "name", "appliance_id", "lifecycle_state", "extra_details").
 			Order("id").
 			Limit(pageSize).
 			Offset(offset)
@@ -509,6 +491,37 @@ func (c *ArrayClient) enumerateWitnesses(ctx context.Context) ([]witnessInfo, er
 		_, err := c.gp.APIClient().Query(ctx, api.RequestConfig{
 			Method:      "GET",
 			Endpoint:    "witness",
+			QueryParams: qp,
+		}, &page)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page...)
+		if len(page) < pageSize {
+			return all, nil
+		}
+	}
+}
+
+// enumerateReplicationSessions lists replication sessions via the generic API,
+// paginating defensively. gopowerstore exposes no list-sessions method (only
+// by-id/by-local-resource lookups), so the resource is read with the generic
+// Query escape hatch (see ADR-0009), which also captures Metro sessions that a
+// protection-policy-driven probe would miss.
+func (c *ArrayClient) enumerateReplicationSessions(ctx context.Context) ([]gopowerstore.ReplicationSession, error) {
+	const pageSize = 2000
+	var all []gopowerstore.ReplicationSession
+	for offset := 0; ; offset += pageSize {
+		qp := c.gp.APIClient().QueryParams().
+			Select("id", "state", "role", "type", "resource_type", "local_resource_id", "remote_system_id").
+			Order("id").
+			Limit(pageSize).
+			Offset(offset)
+
+		var page []gopowerstore.ReplicationSession
+		_, err := c.gp.APIClient().Query(ctx, api.RequestConfig{
+			Method:      "GET",
+			Endpoint:    "replication_session",
 			QueryParams: qp,
 		}, &page)
 		if err != nil {

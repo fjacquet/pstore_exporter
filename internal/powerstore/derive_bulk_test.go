@@ -55,3 +55,25 @@ func TestBulkVolumeSamplesMatchPerEntity(t *testing.T) {
 		}
 	}
 }
+
+func TestDeriveBulkVolumePerfNameFallback(t *testing.T) {
+	topo := NewTopology(
+		gopowerstore.Cluster{ID: "c1"}, nil,
+		[]gopowerstore.Volume{{ID: "v-known", Name: "prod-db", ApplianceID: "a-1"}},
+		nil, nil, nil, nil, nil,
+	)
+	rows := []map[string]string{
+		{"volume_id": "v-known", "appliance_id": "a-1", "avg_read_iops": "1"},
+		{"volume_id": "v-snap", "appliance_id": "a-1", "avg_read_iops": "2"}, // not in inventory
+	}
+
+	got := deriveBulkVolumePerf("p1", topo, rows)
+
+	if _, ok := sampleByLabel(got, "powerstore_volume_read_iops", "volume_name", "prod-db"); !ok {
+		t.Fatal("known volume must resolve to its name")
+	}
+	// Unresolved row keeps the UUID as the name (keep + count decision).
+	if _, ok := sampleByLabel(got, "powerstore_volume_read_iops", "volume_name", "v-snap"); !ok {
+		t.Fatal("unresolved row must fall back to volume_id as volume_name")
+	}
+}

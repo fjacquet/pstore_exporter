@@ -67,3 +67,29 @@ func deriveReplicationTransfer(array string, topo *Topology, resourceID, resourc
 		{"powerstore_replication_data_remaining_bytes", labels, float64(latest.DataRemaining)},
 	}
 }
+
+// replicatedVolumeResources returns the deduplicated local resource IDs of
+// volume-type replication sessions — the resources whose live mirror transfer
+// rate is worth querying. Non-volume sessions (e.g. volume_group, file_system)
+// and sessions with no local resource id are skipped. A single volume can
+// appear in more than one volume-type session (e.g. Metro plus an async DR
+// session in a 3-site protection setup), so ids are deduped, preserving
+// first-seen order, to avoid querying — and emitting — the same resource's
+// transfer metrics twice (which would produce a duplicate/invalid Prometheus
+// series). Driving transfer queries from real sessions (rather than from every
+// protection-policy volume) avoids phantom 0/0 series.
+func replicatedVolumeResources(sessions []gopowerstore.ReplicationSession) []string {
+	var ids []string
+	seen := make(map[string]struct{})
+	for _, s := range sessions {
+		if s.ResourceType != "volume" || s.LocalResourceID == "" {
+			continue
+		}
+		if _, ok := seen[s.LocalResourceID]; ok {
+			continue
+		}
+		seen[s.LocalResourceID] = struct{}{}
+		ids = append(ids, s.LocalResourceID)
+	}
+	return ids
+}

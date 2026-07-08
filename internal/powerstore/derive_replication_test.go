@@ -1,6 +1,7 @@
 package powerstore
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/dell/gopowerstore"
@@ -92,5 +93,40 @@ func TestDeriveReplicationTransferEmpty(t *testing.T) {
 	got := deriveReplicationTransfer("p1", topo, "v-1", "volume", nil)
 	if len(got) != 0 {
 		t.Fatalf("no samples should emit nothing, got %+v", got)
+	}
+}
+
+func TestReplicatedVolumeResources(t *testing.T) {
+	sessions := []gopowerstore.ReplicationSession{
+		{ID: "rs-1", ResourceType: "volume", LocalResourceID: "v-1"},
+		{ID: "rs-2", ResourceType: "file_system", LocalResourceID: "fs-1"}, // not a volume → skip
+		{ID: "rs-3", ResourceType: "volume", LocalResourceID: ""},          // no id → skip
+		{ID: "rs-4", ResourceType: "volume", LocalResourceID: "v-2"},
+		// A volume protected by both Metro and an async DR session (3-site
+		// protection) appears in two volume-type sessions with the same
+		// LocalResourceID — must be deduped to a single entry.
+		{ID: "rs-5", ResourceType: "volume", LocalResourceID: "v-1"},
+	}
+	got := replicatedVolumeResources(sessions)
+	want := []string{"v-1", "v-2"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("want %v, got %v", want, got)
+	}
+}
+
+func TestDeriveReplicationSessionMetro(t *testing.T) {
+	topo := NewTopology(gopowerstore.Cluster{ID: "c1"}, nil, nil, nil, nil, nil, nil, nil)
+	sessions := []gopowerstore.ReplicationSession{
+		{ID: "rs-metro", State: gopowerstore.RsStatePaused, Role: "Metro_Preferred",
+			Type: "Metro_Active_Active", ResourceType: "volume",
+			RemoteSystemID: "remote-9", LocalResourceID: "v-9"},
+	}
+	got := deriveReplicationSessions("p1", topo, sessions)
+
+	if v, ok := sampleByLabel(got, "powerstore_replication_session_state", "state", "Paused"); !ok || v != 1 {
+		t.Fatalf("metro session state=Paused: want 1, got %v (present=%v)", v, ok)
+	}
+	if _, ok := sampleByLabel(got, "powerstore_replication_session_state", "role", "Metro_Preferred"); !ok {
+		t.Fatal("expected a role=Metro_Preferred label")
 	}
 }

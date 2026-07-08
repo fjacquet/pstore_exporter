@@ -15,7 +15,7 @@ func deriveVolumePerf(array string, topo *Topology, resp []gopowerstore.Performa
 	latest := latestByID(resp, func(r gopowerstore.PerformanceMetricsByVolumeResponse) string { return r.VolumeID })
 	var out []Sample
 	for volID, r := range latest {
-		volName, applID := topo.VolumeInfo(volID)
+		volName, applID, _ := topo.VolumeInfo(volID)
 		if volName == "" {
 			volName = volID
 		}
@@ -77,12 +77,25 @@ func deriveApplianceSpace(array string, topo *Topology, resp []gopowerstore.Spac
 	return out
 }
 
-// deriveFileSystemCapacity emits file-system capacity from inventory (no metrics call,
-// since gopowerstore v1.22.0 has no PerformanceMetricsByFileSystem method).
+// chartableFileSystem reports whether a file system is a real, provisioned data
+// filesystem worth charting. Inactive metro/replication-destination stubs report
+// size_total as null, which the SDK decodes to 0; PowerStore never provisions a
+// real filesystem at 0 bytes, so a 0 total is the reliable "skip me" signal (the
+// REST API exposes no is_replication_destination/state flag to filter on).
+func chartableFileSystem(fs gopowerstore.FileSystem) bool {
+	return fs.SizeTotal > 0
+}
+
+// deriveFileSystemCapacity emits file-system capacity (size) from inventory; live
+// file-system performance is collected separately by fileSystemPerf. Inactive
+// stubs with a null/zero provisioned size are skipped via chartableFileSystem.
 func deriveFileSystemCapacity(array string, topo *Topology) []Sample {
 	clusterID := topo.ClusterID()
 	var out []Sample
 	for _, fs := range topo.FileSystems {
+		if !chartableFileSystem(fs) {
+			continue
+		}
 		labels := fileSystemLabels(array, clusterID, fs.Name, fs.ID, topo.NASName(fs.NasServerID), fs.NasServerID)
 		out = append(out,
 			Sample{"powerstore_file_system_size_total_bytes", labels, float64(fs.SizeTotal)},

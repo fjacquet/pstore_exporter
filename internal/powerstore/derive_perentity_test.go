@@ -48,3 +48,21 @@ func TestDeriveFileSystemCapacity(t *testing.T) {
 		t.Fatalf("missing fs capacity: %+v", got)
 	}
 }
+
+func TestDeriveFileSystemCapacitySkipsZeroSize(t *testing.T) {
+	topo := NewTopology(gopowerstore.Cluster{ID: "c1"}, nil, nil, nil, nil,
+		[]gopowerstore.FileSystem{
+			{ID: "fs-real", Name: "FS01", NasServerID: "nas-1", SizeTotal: 107374182400, SizeUsed: 1623195648},
+			{ID: "fs-stub", Name: "FS01", NasServerID: "nas-2", SizeTotal: 0, SizeUsed: 0},
+		},
+		nil, nil)
+
+	got := deriveFileSystemCapacity("p1", topo)
+
+	if _, ok := sampleByLabel(got, "powerstore_file_system_size_total_bytes", "file_system_id", "fs-real"); !ok {
+		t.Fatal("real FS must emit size_total")
+	}
+	if _, ok := sampleByLabel(got, "powerstore_file_system_size_total_bytes", "file_system_id", "fs-stub"); ok {
+		t.Fatal("size-0 FS (null size stub) must not emit a capacity series")
+	}
+}

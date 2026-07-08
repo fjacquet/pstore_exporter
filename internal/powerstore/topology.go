@@ -112,7 +112,11 @@ func (t *Topology) NASName(id string) string { return t.nasName[id] }
 // ApplianceServiceTag resolves an appliance id to its service tag (empty if unknown).
 func (t *Topology) ApplianceServiceTag(id string) string { return t.applianceServiceTag[id] }
 
-// VolumeInfo returns the name and appliance ID for a volume id (both empty if unknown).
-func (t *Topology) VolumeInfo(id string) (name, applianceID string) {
-	return t.volumeName[id], t.volumeApplianceID[id]
+// VolumeInfo returns the name and appliance ID for a volume id, plus whether the
+// id was found in the inventory index. A false `known` means the id was absent
+// (e.g. a snapshot/clone present in the bulk CSV but filtered out of the volume
+// inventory); callers fall back to the id for the name and may count the miss.
+func (t *Topology) VolumeInfo(id string) (name, applianceID string, known bool) {
+	name, known = t.volumeName[id]
+	return name, t.volumeApplianceID[id], known
 }

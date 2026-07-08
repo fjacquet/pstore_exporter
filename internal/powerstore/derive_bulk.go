@@ -1,6 +1,11 @@
 package powerstore
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/fjacquet/pstore_exporter/internal/logging"
+)
 
 // csvFloat parses a numeric CSV cell, returning the first candidate key that is
 // present and parseable. The PowerStore bulk five-minute CSVs use averaged
@@ -29,11 +34,15 @@ func csvFloat(row map[string]string, keys ...string) float64 {
 func deriveBulkVolumePerf(array string, topo *Topology, rows []map[string]string) []Sample {
 	clusterID := topo.ClusterID()
 	var out []Sample
+	misses := 0
 	for _, r := range rows {
 		volID := r["volume_id"]
-		volName, applID := topo.VolumeInfo(volID)
+		volName, applID, known := topo.VolumeInfo(volID)
 		if volName == "" {
-			volName = volID
+			volName = volID // keep the UUID for both a true miss and an empty name
+		}
+		if !known {
+			misses++
 		}
 		if applID == "" {
 			applID = r["appliance_id"]
@@ -50,6 +59,9 @@ func deriveBulkVolumePerf(array string, topo *Topology, rows []map[string]string
 			Sample{"powerstore_volume_write_latency_microseconds", labels, csvFloat(r, "avg_write_latency")},
 			Sample{"powerstore_volume_avg_io_size_bytes", labels, csvFloat(r, "avg_io_size")},
 		)
+	}
+	if misses > 0 {
+		logging.LogDebug(fmt.Sprintf("array %q: %d bulk volume rows unresolved to inventory (snapshots/clones)", array, misses))
 	}
 	return out
 }

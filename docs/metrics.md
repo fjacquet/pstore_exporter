@@ -115,9 +115,12 @@ Each port metric carries: `array`, `cluster_id`, `port_name`, `port_id`, `port_t
 
 ## Drive metrics
 
-Each drive metric carries: `array`, `cluster_id`, `drive_id`, `drive_name`, `appliance_id`.
-Drives are enumerated via a single generic GET on the `hardware` resource (PowerStore exposes
-no typed list-drives method; see [ADR-0009](adr/0009-expand-metric-coverage-library-first.md)).
+Each drive metric carries: `array`, `cluster_id`, `drive_id`, `drive_name`, `appliance_id`, and
+is emitted once per drive on the array. Drives are enumerated via a single generic GET on the
+`hardware` resource (PowerStore exposes no typed list-drives method; see
+[ADR-0009](adr/0009-expand-metric-coverage-library-first.md)). Prior to the `lifecycle_state`
+property fix, the enumeration query 400'd and both metrics below were silently absent from
+`/metrics`.
 
 | Metric | Labels | Description |
 |---|---|---|
@@ -141,19 +144,23 @@ both the bulk and per-entity paths (see [ADR-0009](adr/0009-expand-metric-covera
 
 ## Replication metrics
 
-Source: typed `gopowerstore` methods (`GetReplicationRules`,
-`GetReplicationSessionByLocalResourceID`, `VolumeMirrorTransferRate`). Sessions and transfer
-metrics are enumerated from volumes carrying a protection policy. Emitted on both export
-paths (see [ADR-0009](adr/0009-expand-metric-coverage-library-first.md)).
+Source: `GetReplicationRules` (typed) for RPO; replication sessions are enumerated via the
+generic API (`replication_session`, the same escape hatch used for drives and the Metro
+witness — see [ADR-0009](adr/0009-expand-metric-coverage-library-first.md)), which captures
+every session on the array, including **Metro** sessions (`role=Metro_Preferred` /
+`Metro_Non_Preferred`, `type=Metro_Active_Active`) that are not driven by a protection policy
+and were previously invisible. Transfer/backlog (`VolumeMirrorTransferRate`, typed) is then
+queried only for the volume-type sessions found, so a policy-bearing volume with no session no
+longer emits a phantom `0`/`0` transfer series. Emitted on both export paths.
 
 Each replication and witness metric carries: `array`, `cluster_id`.
 
 | Metric | Labels | Description |
 |---|---|---|
-| `powerstore_replication_session_state` | `session_id`, `local_resource_id`, `resource_type`, `role`, `type`, `remote_system_id`, `state` | Info series, always `1`; the session's current state is the `state` label (`OK`, `Synchronizing`, `Error`, `Fractured`, `System_Paused`, …). |
+| `powerstore_replication_session_state` | `session_id`, `local_resource_id`, `resource_type`, `role`, `type`, `remote_system_id`, `state` | Info series, always `1`, one per replication session of any resource type (e.g. volume, volume_group, file_system) — including Metro sessions. The session's current state is the `state` label (`OK`, `Synchronizing`, `Error`, `Fractured`, `System_Paused`, `Paused`, …); `role`/`type` distinguish Metro (`role=Metro_Preferred|Metro_Non_Preferred`, `type=Metro_Active_Active`) from async/sync sessions. |
 | `powerstore_replication_rpo_seconds` | `rule_id`, `remote_system_id` | Configured RPO of a replication rule, in seconds (`0` = synchronous). |
-| `powerstore_replication_transfer_rate_bytes_per_second` | `resource_id`, `resource_type` | Current mirror replication throughput for the resource. |
-| `powerstore_replication_data_remaining_bytes` | `resource_id`, `resource_type` | Outstanding data still to be replicated (backlog / RPO-risk indicator). |
+| `powerstore_replication_transfer_rate_bytes_per_second` | `resource_id`, `resource_type` | Current mirror replication throughput for the resource. Emitted only for volumes with an active replication session. |
+| `powerstore_replication_data_remaining_bytes` | `resource_id`, `resource_type` | Outstanding data still to be replicated (backlog / RPO-risk indicator). Emitted only for volumes with an active replication session. |
 | `powerstore_metro_witness_state` | `witness_id`, `witness_name`, `state` | Info series, always `1`; the Metro witness service's overall state is the `state` label (`OK`, `Partially_Connected`, `Disconnected`, `Initializing`, `Deleting`). |
 | `powerstore_metro_witness_connection_state` | `witness_id`, `appliance_id`, `node_id`, `state` | Info series, always `1`; one per node, with the node's connection to the witness in the `state` label (`OK`, `Disconnected`, `Initializing`). |
 
