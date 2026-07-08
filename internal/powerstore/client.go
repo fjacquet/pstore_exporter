@@ -371,7 +371,13 @@ func (c *ArrayClient) replicationMetrics(ctx context.Context, topo *Topology) []
 // Called from BOTH export paths so bulk and per-entity stay at parity; it
 // complements the inventory-derived file-system capacity metrics.
 func (c *ArrayClient) fileSystemPerf(ctx context.Context, topo *Topology) []Sample {
-	return parallelSamples(ctx, topo.FileSystems, c.maxConcurrency, func(ctx context.Context, fs gopowerstore.FileSystem) []Sample {
+	chartable := make([]gopowerstore.FileSystem, 0, len(topo.FileSystems))
+	for _, fs := range topo.FileSystems {
+		if chartableFileSystem(fs) {
+			chartable = append(chartable, fs)
+		}
+	}
+	return parallelSamples(ctx, chartable, c.maxConcurrency, func(ctx context.Context, fs gopowerstore.FileSystem) []Sample {
 		resp, err := c.gp.PerformanceMetricsByFileSystem(ctx, fs.ID, c.interval)
 		if err != nil {
 			logging.LogWarn(fmt.Sprintf("array %q: file system %s perf failed: %v", c.name, fs.ID, err))
