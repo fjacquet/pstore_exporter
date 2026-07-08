@@ -67,3 +67,18 @@ func deriveReplicationTransfer(array string, topo *Topology, resourceID, resourc
 		{"powerstore_replication_data_remaining_bytes", labels, float64(latest.DataRemaining)},
 	}
 }
+
+// replicatedVolumeResources returns the local resource IDs of volume-type
+// replication sessions — the resources whose live mirror transfer rate is worth
+// querying. Non-volume sessions (file_system, virtual_volume) and sessions with
+// no local resource id are skipped. Driving transfer queries from real sessions
+// (rather than from every protection-policy volume) avoids phantom 0/0 series.
+func replicatedVolumeResources(sessions []gopowerstore.ReplicationSession) []string {
+	var ids []string
+	for _, s := range sessions {
+		if s.ResourceType == "volume" && s.LocalResourceID != "" {
+			ids = append(ids, s.LocalResourceID)
+		}
+	}
+	return ids
+}
