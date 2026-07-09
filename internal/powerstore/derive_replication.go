@@ -27,7 +27,8 @@ func deriveReplicationSessions(array string, topo *Topology, sessions []gopowers
 		if s.ID == "" {
 			continue
 		}
-		labels := replicationSessionLabels(array, clusterID, s.ID, s.LocalResourceID,
+		name := topo.ResourceName(s.ResourceType, s.LocalResourceID)
+		labels := replicationSessionLabels(array, clusterID, s.ID, s.LocalResourceID, name,
 			s.ResourceType, s.Role, s.Type, s.RemoteSystemID, string(s.State))
 		out = append(out, Sample{"powerstore_replication_session_state", labels, 1})
 	}
@@ -61,7 +62,8 @@ func deriveReplicationTransfer(array string, topo *Topology, resourceID, resourc
 		return nil
 	}
 	latest := samples[len(samples)-1]
-	labels := replicationResourceLabels(array, topo.ClusterID(), resourceID, resourceType)
+	name := topo.ResourceName(resourceType, resourceID)
+	labels := replicationResourceLabels(array, topo.ClusterID(), resourceID, name, resourceType)
 	return []Sample{
 		{"powerstore_replication_transfer_rate_bytes_per_second", labels, float64(latest.MirrorBandwidth)},
 		{"powerstore_replication_data_remaining_bytes", labels, float64(latest.DataRemaining)},

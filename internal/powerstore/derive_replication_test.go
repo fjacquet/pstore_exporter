@@ -130,3 +130,70 @@ func TestDeriveReplicationSessionMetro(t *testing.T) {
 		t.Fatal("expected a role=Metro_Preferred label")
 	}
 }
+
+func TestDeriveReplicationSessionResourceNames(t *testing.T) {
+	topo := NewTopology(
+		gopowerstore.Cluster{ID: "c1"},
+		nil,
+		[]gopowerstore.Volume{{ID: "v-1", Name: "vol1"}},
+		[]gopowerstore.VolumeGroup{{ID: "vg-1", Name: "vgA"}},
+		[]gopowerstore.NAS{{ID: "nas-1", Name: "NAS01"}},
+		[]gopowerstore.FileSystem{{ID: "fs-1", Name: "FS01"}},
+		nil, nil,
+	)
+	sessions := []gopowerstore.ReplicationSession{
+		{ID: "rs-vol", ResourceType: "volume", LocalResourceID: "v-1", State: gopowerstore.RsStateOk},
+		{ID: "rs-vg", ResourceType: "volume_group", LocalResourceID: "vg-1", State: gopowerstore.RsStateOk},
+		{ID: "rs-fs", ResourceType: "file_system", LocalResourceID: "fs-1", State: gopowerstore.RsStateOk},
+		{ID: "rs-nas", ResourceType: "nas_server", LocalResourceID: "nas-1", State: gopowerstore.RsStateOk},
+		{ID: "rs-ghost", ResourceType: "volume", LocalResourceID: "v-missing", State: gopowerstore.RsStateOk},
+	}
+
+	got := deriveReplicationSessions("p1", topo, sessions)
+
+	for _, want := range []string{"vol1", "vgA", "FS01", "NAS01"} {
+		if _, ok := sampleByLabel(got, "powerstore_replication_session_state", "local_resource_name", want); !ok {
+			t.Fatalf("expected a session series with local_resource_name=%q", want)
+		}
+	}
+	// An id absent from inventory degrades to the id, never to "".
+	if _, ok := sampleByLabel(got, "powerstore_replication_session_state", "local_resource_name", "v-missing"); !ok {
+		t.Fatal("unresolvable resource must fall back to local_resource_name=<id>")
+	}
+	if _, ok := sampleByLabel(got, "powerstore_replication_session_state", "local_resource_name", ""); ok {
+		t.Fatal("local_resource_name must never be empty")
+	}
+}
+
+func TestDeriveReplicationTransferResourceName(t *testing.T) {
+	topo := NewTopology(
+		gopowerstore.Cluster{ID: "c1"}, nil,
+		[]gopowerstore.Volume{{ID: "v-1", Name: "vol1"}},
+		nil, nil, nil, nil, nil,
+	)
+	samples := []gopowerstore.VolumeMirrorTransferRateResponse{
+		{ID: "v-1", MirrorBandwidth: 250, DataRemaining: 4000},
+	}
+
+	got := deriveReplicationTransfer("p1", topo, "v-1", "volume", samples)
+
+	if v, ok := sampleByLabel(got, "powerstore_replication_transfer_rate_bytes_per_second", "resource_name", "vol1"); !ok || v != 250 {
+		t.Fatalf("transfer rate by resource_name: want 250, got %v (present=%v)", v, ok)
+	}
+	if v, ok := sampleByLabel(got, "powerstore_replication_data_remaining_bytes", "resource_name", "vol1"); !ok || v != 4000 {
+		t.Fatalf("data remaining by resource_name: want 4000, got %v (present=%v)", v, ok)
+	}
+}
+
+func TestDeriveReplicationTransferUnknownResourceFallsBackToID(t *testing.T) {
+	topo := NewTopology(gopowerstore.Cluster{ID: "c1"}, nil, nil, nil, nil, nil, nil, nil)
+	samples := []gopowerstore.VolumeMirrorTransferRateResponse{
+		{ID: "v-9", MirrorBandwidth: 1, DataRemaining: 2},
+	}
+
+	got := deriveReplicationTransfer("p1", topo, "v-9", "volume", samples)
+
+	if _, ok := sampleByLabel(got, "powerstore_replication_transfer_rate_bytes_per_second", "resource_name", "v-9"); !ok {
+		t.Fatal("unresolvable resource must fall back to resource_name=<id>")
+	}
+}

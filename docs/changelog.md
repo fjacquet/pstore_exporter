@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Replication metrics now carry the replicated resource's **name**, not just its uuid:
+  `powerstore_replication_session_state` gains `local_resource_name`, and
+  `powerstore_replication_transfer_rate_bytes_per_second` /
+  `powerstore_replication_data_remaining_bytes` gain `resource_name`. Names resolve for
+  volume, volume_group, file_system, and nas_server sessions, falling back to the id when
+  the resource is absent from the inventory. The Replication / DR dashboard now shows the
+  resource name and the reporting `array` (which disambiguates the two rows of a Metro
+  pair) in place of the session uuid.
 - SBOM generation moved into GoReleaser (syft) as the single source of truth,
   replacing `cyclonedx-gomod`. Releases now ship a CycloneDX SBOM per archive
   (`*.cdx.json`); CI regenerates them in snapshot mode. `make tools` no longer
@@ -27,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Bumped the Go toolchain floor to **1.26.5** (`go.mod`), patching two standard-library
+  vulnerabilities reported by `govulncheck`: [GO-2026-5856](https://pkg.go.dev/vuln/GO-2026-5856)
+  (reachable via `crypto/tls` from the exporter's HTTP transport) and
+  [GO-2026-4970](https://pkg.go.dev/vuln/GO-2026-4970) (root escape via symlink in `os`,
+  reachable through `gopowerstore.NewClientWithArgs`). Both are fixed only in `go1.26.5`.
 - All third-party and first-party GitHub Actions are now pinned to full commit
   SHAs (with `# vX` comments) across `ci.yml`, `release.yml`, and `docs.yml`,
   hardening the CI/CD supply chain against mutable-tag attacks. See

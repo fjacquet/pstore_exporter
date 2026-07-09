@@ -122,10 +122,13 @@ func volumeGroupLabels(arrayName, clusterID, vgName, vgID string) []Label {
 
 // replicationSessionLabels builds the label set for a replication session's
 // info series. `state` is the current RSStateEnum value as a string.
-func replicationSessionLabels(arrayName, clusterID, sessionID, localResourceID, resourceType, role, sessionType, remoteSystemID, state string) []Label {
+// localResourceName is the resolved display name of the replicated resource; it
+// falls back to localResourceID when the resource is absent from the inventory.
+func replicationSessionLabels(arrayName, clusterID, sessionID, localResourceID, localResourceName, resourceType, role, sessionType, remoteSystemID, state string) []Label {
 	return append(baseLabels(arrayName, clusterID),
 		Label{"session_id", sessionID},
 		Label{"local_resource_id", localResourceID},
+		Label{"local_resource_name", localResourceName},
 		Label{"resource_type", resourceType},
 		Label{"role", role},
 		Label{"type", sessionType},
@@ -135,10 +138,12 @@ func replicationSessionLabels(arrayName, clusterID, sessionID, localResourceID, 
 }
 
 // replicationResourceLabels builds the label set for per-resource replication
-// transfer metrics (resourceType is e.g. "volume").
-func replicationResourceLabels(arrayName, clusterID, resourceID, resourceType string) []Label {
+// transfer metrics (resourceType is e.g. "volume"). resourceName falls back to
+// resourceID when the resource is absent from the inventory.
+func replicationResourceLabels(arrayName, clusterID, resourceID, resourceName, resourceType string) []Label {
 	return append(baseLabels(arrayName, clusterID),
 		Label{"resource_id", resourceID},
+		Label{"resource_name", resourceName},
 		Label{"resource_type", resourceType},
 	)
 }
