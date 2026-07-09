@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-07-09
+
 ### Added
 
 - GoReleaser-driven release pipeline (`.goreleaser.yaml`): cross-platform archives,
@@ -31,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`*.cdx.json`); CI regenerates them in snapshot mode. `make tools` no longer
   installs `cyclonedx-gomod`.
 - Release artifacts are now `.tar.gz` archives (was raw binaries).
-- Dev `Dockerfile` build stage pinned to `golang:1.26.4` (matches `go.mod`).
+- Dev `Dockerfile` build stage pinned to `golang:1.26.5` (matches `go.mod`).
 
 ### Security
 
@@ -73,5 +75,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MkDocs-Material documentation site.
 - GitHub Actions workflows for CI, release, and docs publication.
 
-[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.1.0...main
+[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.12.0...main
+[0.12.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.1.0...v0.12.0
 [0.1.0]: https://github.com/fjacquet/pstore_exporter/releases/tag/v0.1.0
