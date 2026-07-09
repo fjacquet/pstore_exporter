@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Replication metrics now carry the replicated resource's **name**, not just its uuid:
+  `powerstore_replication_session_state` gains `local_resource_name`, and
+  `powerstore_replication_transfer_rate_bytes_per_second` /
+  `powerstore_replication_data_remaining_bytes` gain `resource_name`. Names resolve for
+  volume, volume_group, file_system, and nas_server sessions, falling back to the id when
+  the resource is absent from the inventory. The Replication / DR dashboard now shows the
+  resource name and the reporting `array` (which disambiguates the two rows of a Metro
+  pair) in place of the session uuid.
 - SBOM generation moved into GoReleaser (syft) as the single source of truth,
   replacing `cyclonedx-gomod`. Releases now ship a CycloneDX SBOM per archive
   (`*.cdx.json`); CI regenerates them in snapshot mode. `make tools` no longer

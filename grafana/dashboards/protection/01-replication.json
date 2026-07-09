@@ -128,20 +128,22 @@
               "Time": true,
               "Value": true,
               "__name__": true,
-              "array": true,
               "cluster_id": true,
-              "local_resource_id": true
+              "local_resource_id": true,
+              "session_id": true
             },
             "indexByName": {
-              "session_id": 0,
-              "resource_type": 1,
-              "role": 2,
-              "type": 3,
-              "remote_system_id": 4,
-              "state": 5
+              "array": 0,
+              "local_resource_name": 1,
+              "resource_type": 2,
+              "role": 3,
+              "type": 4,
+              "remote_system_id": 5,
+              "state": 6
             },
             "renameByName": {
-              "session_id": "Session",
+              "array": "Array",
+              "local_resource_name": "Resource",
               "resource_type": "Resource Type",
               "role": "Role",
               "type": "Type",
@@ -188,7 +190,7 @@
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
-        { "refId": "A", "expr": "powerstore_replication_data_remaining_bytes{array=~\"$array\"}", "legendFormat": "{{resource_id}}" }
+        { "refId": "A", "expr": "powerstore_replication_data_remaining_bytes{array=~\"$array\"}", "legendFormat": "{{resource_name}}" }
       ]
     },
     {
@@ -204,7 +206,7 @@
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
-        { "refId": "A", "expr": "powerstore_replication_transfer_rate_bytes_per_second{array=~\"$array\"}", "legendFormat": "{{resource_id}}" }
+        { "refId": "A", "expr": "powerstore_replication_transfer_rate_bytes_per_second{array=~\"$array\"}", "legendFormat": "{{resource_name}}" }
       ]
     },
     {
