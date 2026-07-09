@@ -27,6 +27,7 @@ type Topology struct {
 	volumeName          map[string]string
 	volumeApplianceID   map[string]string
 	nasName             map[string]string
+	fsName              map[string]string
 }
 
 // NewTopology builds a Topology and its lookup indices from the inventory slices
@@ -58,6 +59,7 @@ func NewTopology(
 		volumeName:          make(map[string]string),
 		volumeApplianceID:   make(map[string]string),
 		nasName:             make(map[string]string),
+		fsName:              make(map[string]string),
 	}
 	for _, a := range appliances {
 		t.applianceName[a.ID] = a.Name
@@ -91,6 +93,9 @@ func NewTopology(
 	for _, n := range nas {
 		t.nasName[n.ID] = n.Name
 	}
+	for _, f := range fs {
+		t.fsName[f.ID] = f.Name
+	}
 	return t
 }
 
@@ -119,4 +124,27 @@ func (t *Topology) ApplianceServiceTag(id string) string { return t.applianceSer
 func (t *Topology) VolumeInfo(id string) (name, applianceID string, known bool) {
 	name, known = t.volumeName[id]
 	return name, t.volumeApplianceID[id], known
+}
+
+// ResourceName resolves a replication session's local resource id to a display
+// name, dispatching on the session's resource_type. Unknown ids, unknown resource
+// types, and ids absent from the inventory all fall back to the id itself, so the
+// label is never empty and the panel degrades to showing the uuid rather than a
+// blank cell.
+func (t *Topology) ResourceName(resourceType, id string) string {
+	var name string
+	switch resourceType {
+	case "volume":
+		name = t.volumeName[id]
+	case "volume_group":
+		name = t.vgName[id]
+	case "file_system":
+		name = t.fsName[id]
+	case "nas_server":
+		name = t.nasName[id]
+	}
+	if name == "" {
+		return id
+	}
+	return name
 }
