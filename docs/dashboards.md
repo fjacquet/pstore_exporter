@@ -18,6 +18,58 @@ Every dashboard shares one design system: a `datasource` + `array` template vari
 and thresholds, fixed read=blue / write=orange series colors, and a tag-based dashboard
 links dropdown (`powerstore`) plus data links that drill down carrying `$array`.
 
+## Gallery
+
+### overview / 00-fleet-health
+
+Landing page: per-array `up` state, scrape staleness, active critical alerts, ports down,
+bulk-API capability, plus performance and capacity glances with drill-down links.
+
+![Fleet health dashboard](assets/screenshots/fleet-health.png)
+
+### overview / 01-cluster-overview
+
+Fleet performance (IOPS, bandwidth, latency) and capacity rollup per array.
+
+![Cluster overview dashboard](assets/screenshots/cluster-overview.png)
+
+### block / 02-appliances
+
+Per-appliance throughput and latency, filtered by the `$array` and `$appliance` variables.
+
+![Appliances dashboard](assets/screenshots/appliances.png)
+
+### block / 05-capacity
+
+Cluster and per-appliance physical/logical space, data reduction, efficiency, snapshot and
+thin savings ratios.
+
+![Capacity dashboard](assets/screenshots/capacity.png)
+
+### block / 06-ports
+
+Ports up/down counters and a per-port link-status table.
+
+![Ports dashboard](assets/screenshots/ports.png)
+
+### file / 01-file-systems
+
+File system size, used %, and a capacity summary table per NAS server.
+
+![File systems dashboard](assets/screenshots/file-systems.png)
+
+### protection / 01-replication
+
+Replication session state (including Metro), RPO, backlog, and transfer rate.
+
+![Replication dashboard](assets/screenshots/replication.png)
+
+### hardware / 01-drives
+
+Drive state, wear level, unhealthy and worn-drive counters.
+
+![Drives dashboard](assets/screenshots/drives.png)
+
 ## Import
 
 In Grafana: **Dashboards → New → Import**, upload the JSON, and select your Prometheus
