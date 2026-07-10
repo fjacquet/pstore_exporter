@@ -72,8 +72,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(powerstore_port_link_up{array=~\"$array\"} == 1) or vector(0)",
-          "legendFormat": "Ports Up"
+          "expr": "sum by (array) (powerstore_port_link_up{array=~\"$array\"} == bool 1)",
+          "legendFormat": "{{array}}"
         }
       ]
     },
@@ -102,8 +102,8 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "count(powerstore_port_link_up{array=~\"$array\"} == 0) or vector(0)",
-          "legendFormat": "Ports Down"
+          "expr": "sum by (array) (powerstore_port_link_up{array=~\"$array\"} == bool 0)",
+          "legendFormat": "{{array}}"
         }
       ]
     },

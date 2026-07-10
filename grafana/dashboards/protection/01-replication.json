@@ -74,7 +74,7 @@
       },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
       "targets": [
-        { "refId": "A", "expr": "count(powerstore_replication_session_state{array=~\"$array\",state=~\"Error|Fractured|Paused|System_Paused\"})", "legendFormat": "Bad State" }
+        { "refId": "A", "expr": "sum by (array) (powerstore_replication_session_state{array=~\"$array\",state=~\"Error|Fractured|Paused|System_Paused\"}) or sum by (array) (powerstore_up{array=~\"$array\"} * 0)", "legendFormat": "{{array}}" }
       ]
     },
     {
