@@ -124,10 +124,14 @@ For numeric comparisons use the `bool` modifier instead, which keeps the series:
 neither treatment.
 
 **Hue is identity, line style is direction.** Timeseries panels set
-`"color": {"mode": "palette-classic-by-name"}`, so an array or appliance keeps the same colour
-on every dashboard. Write series are dashed via a `/ write$/` override setting
-`custom.lineStyle`. Panels whose colour encodes a threshold rather than an identity — CPU
-utilisation, drive wear, the capacity gauges — keep `"color": {"mode": "thresholds"}`.
+`"color": {"mode": "palette-classic-by-name"}`. Hue is derived deterministically from each
+series' name, so within any panel every array or appliance is distinguishable and its colour
+is stable across refreshes — but the hash includes the ` read`/` write` suffix and legends
+differ between panels, so the same entity is not guaranteed the same hue on a different panel
+or dashboard. Direction is shown by line style — read solid, write dashed via a `/ write$/`
+override setting `custom.lineStyle`. Panels whose colour encodes a threshold rather than an
+identity — CPU utilisation, drive wear, the capacity gauges — keep
+`"color": {"mode": "thresholds"}`.
 
 ## Building more
 

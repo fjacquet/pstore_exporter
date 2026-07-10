@@ -32,10 +32,14 @@ no tile — indistinguishable from an array that is not being scraped.
   label set so the `or` union is label-compatible. Boolean comparisons use the `bool` modifier
   (`== bool 0`) instead, which yields `1`/`0` per series rather than filtering series away.
 - **Hue encodes identity, line style encodes direction.** Timeseries panels set
-  `color.mode: palette-classic-by-name`, so an array or appliance keeps one colour across every
-  dashboard; `/ write$/` sets `custom.lineStyle` to a dash. `stat` panels have no line and simply
-  drop the overrides. Threshold-coloured panels (CPU, drive wear, capacity gauges) are unaffected:
-  their hue encodes a value against a threshold, not an identity.
+  `color.mode: palette-classic-by-name`, which derives hue from each series' full display name.
+  Within any one panel every array or appliance is therefore distinguishable, and its colour is
+  stable across refreshes; `/ write$/` sets `custom.lineStyle` to a dash. Because the hash includes
+  the ` read`/` write` suffix and legends differ between panels, the same entity is not guaranteed
+  the same hue on a different panel or dashboard — only line style (solid vs. dashed) carries
+  direction consistently. `stat` panels have no line and simply drop the overrides.
+  Threshold-coloured panels (CPU, drive wear, capacity gauges) are unaffected: their hue encodes a
+  value against a threshold, not an identity.
 - **A CI guard.** ADR-0014 deferred a consistency linter until "drift becomes a problem".
   Fourteen panels found by a customer is that problem. `internal/dashboards` walks the bundled
   JSON and fails `make ci` on bare aggregations and on fixed direction colours. It is stdlib-only

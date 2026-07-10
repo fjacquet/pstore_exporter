@@ -204,3 +204,42 @@ func TestDirectionPanelsColourByName(t *testing.T) {
 		}
 	}
 }
+
+// isCatchAll reports whether an override targets every series (e.g. "/.*/").
+func isCatchAll(o override) bool {
+	if o.Matcher.ID != "byRegexp" {
+		return false
+	}
+	opts, ok := o.Matcher.Options.(string)
+	return ok && (opts == "/.*/" || opts == "/.+/")
+}
+
+// TestNoCatchAllFixedColour enforces that a timeseries panel never pins every
+// series to one fixed colour. A catch-all fixed-colour override collapses all
+// entities (volumes, appliances, arrays) into one indistinguishable colour —
+// the exact defect reported on the Appliances and Volumes dashboards.
+func TestNoCatchAllFixedColour(t *testing.T) {
+	for _, p := range loadPanels(t) {
+		if p.Type != "timeseries" {
+			continue
+		}
+		for _, o := range p.FieldConfig.Overrides {
+			if !isCatchAll(o) {
+				continue
+			}
+			for _, prop := range o.Properties {
+				if prop.ID != "color" {
+					continue
+				}
+				var c colorSpec
+				if err := json.Unmarshal(prop.Value, &c); err != nil {
+					t.Fatalf("%s: panel %q: bad color value: %v", p.File, p.Title, err)
+				}
+				if c.Mode == "fixed" {
+					t.Errorf("%s: panel %q pins every series to one fixed colour via a "+
+						"catch-all matcher, collapsing all entities into one colour", p.File, p.Title)
+				}
+			}
+		}
+	}
+}

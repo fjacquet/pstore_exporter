@@ -135,11 +135,10 @@
       "fieldConfig": {
         "defaults": {
           "unit": "Bps",
-          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" }
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "color": { "mode": "palette-classic-by-name" }
         },
-        "overrides": [
-          { "matcher": { "id": "byRegexp", "options": "/.*/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] }
-        ]
+        "overrides": []
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
@@ -160,11 +159,10 @@
       "fieldConfig": {
         "defaults": {
           "unit": "Bps",
-          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" }
+          "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never", "lineStyle": { "fill": "dash", "dash": [10, 10] } },
+          "color": { "mode": "palette-classic-by-name" }
         },
-        "overrides": [
-          { "matcher": { "id": "byRegexp", "options": "/.*/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
-        ]
+        "overrides": []
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
