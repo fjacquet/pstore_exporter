@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-10
+
+First stable release. The exporter is in production use monitoring multiple
+PowerStore arrays; this release makes the bundled dashboards correct for that
+multi-array case and adds a CI guard so they stay that way.
+
+### Changed
+
+- **Every dashboard panel now attributes its value to a named array.** Panels that
+  aggregated a cluster- or appliance-wide value (capacity used, data-reduction and
+  efficiency ratios, IOPS/bandwidth/latency glances, port and drive counts) grouped
+  without `by (array)`, so with more than one array selected they showed a single
+  blended, unattributable number. They now group `by (array)` and render one labelled
+  tile or series per array. Ratio rollups use `sum by (array)(…)/sum by (array)(…)`,
+  correcting a meaningless `avg()`-of-ratios across arrays.
+- **Series colour now identifies the entity, line style the direction.** Colour derives
+  from the series name (`palette-classic-by-name`) so every array, appliance or volume is
+  distinguishable within a panel; read is solid and write dashed. This supersedes the
+  fixed `read=blue / write=orange` convention, which drew every entity on a single-direction
+  panel in one colour. See [ADR 0016](adr/0016-per-array-rendering-and-series-colour.md)
+  (supersedes ADR-0014's colour clause).
+
+### Fixed
+
+- Healthy arrays no longer render **no tile at all** on the count panels (Unhealthy Drives,
+  Ports Down, Sessions in Bad State). These count info series that are always `1`, so a
+  healthy array matched nothing and its tile vanished — indistinguishable from a dead
+  exporter. The counts are now zero-filled via `powerstore_up`, and boolean checks use the
+  `bool` modifier, so a healthy array reports `0`.
+- The "Top 10 Volumes — Read/Write Bandwidth" panels no longer draw all ten volumes in a
+  single colour (a catch-all `/.*/` colour override).
+
+### Added
+
+- A CI linter (`internal/dashboards`, part of `make ci`) that fails the build on dashboard
+  panels which aggregate without `by (array)`, pin a fixed read/write colour, or use a
+  catch-all fixed colour — so these regressions cannot ship again. The vendored
+  `node-exporter-full.json` (Grafana community 1860) is excluded.
+
 ## [0.12.0] - 2026-07-09
 
 ### Added
@@ -75,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MkDocs-Material documentation site.
 - GitHub Actions workflows for CI, release, and docs publication.
 
-[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v0.12.0...main
+[Unreleased]: https://github.com/fjacquet/pstore_exporter/compare/v1.0.0...main
+[1.0.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.12.0...v1.0.0
 [0.12.0]: https://github.com/fjacquet/pstore_exporter/compare/v0.1.0...v0.12.0
 [0.1.0]: https://github.com/fjacquet/pstore_exporter/releases/tag/v0.1.0

@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-10
+
+First stable release. Makes the bundled Grafana dashboards correct when one
+exporter monitors multiple PowerStore arrays, and adds a CI guard so they stay
+correct. See `docs/changelog.md` for the full entry.
+
+### Changed
+
+- Every aggregating dashboard panel now groups `by (array)`, rendering one labelled
+  tile/series per array instead of a single blended value. Ratio rollups use
+  `sum by (array)(…)/sum by (array)(…)` instead of a meaningless `avg()`-of-ratios.
+- Series colour derives from the entity name (`palette-classic-by-name`), read solid /
+  write dashed — supersedes the fixed `read=blue / write=orange` convention that collapsed
+  entities into one colour (ADR-0016 supersedes ADR-0014's colour clause).
+
+### Fixed
+
+- Healthy arrays no longer render a missing tile on count panels (Unhealthy Drives, Ports
+  Down, Sessions in Bad State) — those count always-`1` info series and are now zero-filled.
+- "Top 10 Volumes" bandwidth panels no longer draw all ten volumes in one colour.
+
+### Added
+
+- CI linter (`internal/dashboards`, part of `make ci`) failing on panels that aggregate
+  without `by (array)`, pin fixed read/write colours, or use catch-all fixed colours.
+
+## [0.12.0] - 2026-07-09
+
+### Added
+
+- GoReleaser-driven release pipeline (`.goreleaser.yaml`): cross-platform archives, a
+  multi-arch GHCR image, keyless cosign signing, and a Homebrew cask. `make release-snapshot`
+  runs the pipeline as a local dry-run.
+
+### Changed
+
+- Replication metrics now carry the replicated resource's **name**, not just its uuid:
+  `powerstore_replication_session_state` gains `local_resource_name`, and the transfer/backlog
+  metrics gain `resource_name` (volume, volume_group, file_system, nas_server; falling back to
+  the id when the resource is absent from inventory). The Replication / DR dashboard shows the
+  resource name and reporting `array` in place of the session uuid.
+- SBOM generation moved into GoReleaser (syft) as the single source of truth.
+
+### Security
+
+- Bumped the Go toolchain floor to **1.26.5** (`go.mod`), patching GO-2026-5856 and
+  GO-2026-4970 (reachable via `crypto/tls` and `os` respectively). Dev `Dockerfile` pinned
+  to `golang:1.26.5` to match. All GitHub Actions pinned to full commit SHAs.
+
 ## [0.11.0] - 2026-07-08
 
 ### Fixed
