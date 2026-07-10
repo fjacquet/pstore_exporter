@@ -68,6 +68,7 @@
         "defaults": {
           "unit": "iops",
           "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "color": { "mode": "palette-classic-by-name" },
           "links": [
             {
               "title": "Drill to volumes",
@@ -97,6 +98,7 @@
         "defaults": {
           "unit": "Bps",
           "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "color": { "mode": "palette-classic-by-name" },
           "links": [
             {
               "title": "Drill to volumes",
@@ -105,8 +107,15 @@
           ]
         },
         "overrides": [
-          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
-          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+          {
+            "matcher": { "id": "byRegexp", "options": "/ write$/" },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": { "fill": "dash", "dash": [10, 10] }
+              }
+            ]
+          }
         ]
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
@@ -129,6 +138,7 @@
         "defaults": {
           "unit": "Bps",
           "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "color": { "mode": "palette-classic-by-name" },
           "links": [
             {
               "title": "Drill to volumes",
@@ -137,8 +147,15 @@
           ]
         },
         "overrides": [
-          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
-          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+          {
+            "matcher": { "id": "byRegexp", "options": "/ write$/" },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": { "fill": "dash", "dash": [10, 10] }
+              }
+            ]
+          }
         ]
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
@@ -168,6 +185,7 @@
         "defaults": {
           "unit": "µs",
           "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "color": { "mode": "palette-classic-by-name" },
           "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 3000 } ] },
           "links": [
             {
@@ -177,8 +195,15 @@
           ]
         },
         "overrides": [
-          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
-          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+          {
+            "matcher": { "id": "byRegexp", "options": "/ write$/" },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": { "fill": "dash", "dash": [10, 10] }
+              }
+            ]
+          }
         ]
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
@@ -201,6 +226,7 @@
         "defaults": {
           "unit": "µs",
           "custom": { "drawStyle": "line", "fillOpacity": 10, "showPoints": "never" },
+          "color": { "mode": "palette-classic-by-name" },
           "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 3000 } ] },
           "links": [
             {
@@ -210,8 +236,15 @@
           ]
         },
         "overrides": [
-          { "matcher": { "id": "byRegexp", "options": "/ read$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } } ] },
-          { "matcher": { "id": "byRegexp", "options": "/ write$/" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } } ] }
+          {
+            "matcher": { "id": "byRegexp", "options": "/ write$/" },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": { "fill": "dash", "dash": [10, 10] }
+              }
+            ]
+          }
         ]
       },
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },

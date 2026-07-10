@@ -136,3 +136,71 @@ func TestNoBareAggregation(t *testing.T) {
 		}
 	}
 }
+
+// directionMatcher matches the byRegexp options used for the read/write series
+// convention, e.g. "/ read$/" and "/ write$/".
+var directionMatcher = regexp.MustCompile(`(read|write)\$/$`)
+
+// isDirectionOverride reports whether o selects series by read/write direction.
+func isDirectionOverride(o override) bool {
+	if o.Matcher.ID != "byRegexp" {
+		return false
+	}
+	opts, ok := o.Matcher.Options.(string)
+	return ok && directionMatcher.MatchString(opts)
+}
+
+// TestNoFixedDirectionColour enforces R2. Colouring by direction with a fixed
+// colour erases the entity dimension: on a single-direction panel every appliance
+// matches `/ read$/` and every appliance renders blue.
+func TestNoFixedDirectionColour(t *testing.T) {
+	for _, p := range loadPanels(t) {
+		for _, o := range p.FieldConfig.Overrides {
+			if !isDirectionOverride(o) {
+				continue
+			}
+			for _, prop := range o.Properties {
+				if prop.ID != "color" {
+					continue
+				}
+				var c colorSpec
+				if err := json.Unmarshal(prop.Value, &c); err != nil {
+					t.Fatalf("%s: panel %q: bad color value: %v", p.File, p.Title, err)
+				}
+				if c.Mode == "fixed" {
+					t.Errorf("%s: panel %q pins a fixed colour on a read/write matcher, "+
+						"collapsing every entity into one colour", p.File, p.Title)
+				}
+			}
+		}
+	}
+}
+
+// TestDirectionPanelsColourByName enforces R3. A timeseries panel that still
+// distinguishes direction must derive hue from the series name, so an array or
+// appliance keeps one colour across every dashboard.
+func TestDirectionPanelsColourByName(t *testing.T) {
+	for _, p := range loadPanels(t) {
+		if p.Type != "timeseries" {
+			continue
+		}
+		var hasDirection bool
+		for _, o := range p.FieldConfig.Overrides {
+			if isDirectionOverride(o) {
+				hasDirection = true
+				break
+			}
+		}
+		if !hasDirection {
+			continue
+		}
+		got := ""
+		if c := p.FieldConfig.Defaults.Color; c != nil {
+			got = c.Mode
+		}
+		if got != "palette-classic-by-name" {
+			t.Errorf("%s: panel %q distinguishes direction but has color.mode=%q, "+
+				"want %q", p.File, p.Title, got, "palette-classic-by-name")
+		}
+	}
+}
