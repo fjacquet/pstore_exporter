@@ -99,6 +99,36 @@ powerstore_appliance_efficiency_ratio{array=~"$array", appliance_name=~"$applian
 topk(10, sum by (volume_name) (powerstore_volume_total_iops{array=~"$array"}))
 ```
 
+## Panel conventions
+
+These rules are enforced by `go test ./internal/dashboards/` and therefore by `make ci`.
+See [ADR-0016](adr/0016-per-array-rendering-and-series-colour.md).
+
+**Group by `array`.** Every aggregating expression carries a `by (...)` clause including
+`array`, and legends as `{{array}}`. A bare `avg(...)` or `sum(...)` blends every selected
+array into one unattributable number.
+
+**Never let a healthy array vanish.** `powerstore_drive_state` and
+`powerstore_replication_session_state` are info series whose value is always `1`; a healthy
+array matches no series and its tile disappears. Zero-fill with `powerstore_up`, whose only
+label is `array`:
+
+    sum by (array) (powerstore_drive_state{array=~"$array",state!="Healthy"})
+      or sum by (array) (powerstore_up{array=~"$array"} * 0)
+
+For numeric comparisons use the `bool` modifier instead, which keeps the series:
+
+    sum by (array) (powerstore_port_link_up{array=~"$array"} == bool 0)
+
+`powerstore_alert_active` already emits a stable zero series per known severity and needs
+neither treatment.
+
+**Hue is identity, line style is direction.** Timeseries panels set
+`"color": {"mode": "palette-classic-by-name"}`, so an array or appliance keeps the same colour
+on every dashboard. Write series are dashed via a `/ write$/` override setting
+`custom.lineStyle`. Panels whose colour encodes a threshold rather than an identity — CPU
+utilisation, drive wear, the capacity gauges — keep `"color": {"mode": "thresholds"}`.
+
 ## Building more
 
 The dashboards follow the [metric naming scheme](metrics.md); new panels can be built

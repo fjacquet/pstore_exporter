@@ -23,3 +23,5 @@ Records are numbered sequentially and use the MADR-lite format.
 | [0012](0012-credentials-via-env-and-file.md) | Credentials via Environment, `${ENV}` Interpolation, and Password Files | Accepted |
 | [0013](0013-trace-transport-scope.md) | `--trace` HTTP Transport and Its Scope Limitation | Accepted |
 | [0014](0014-grafana-dashboard-taxonomy.md) | Grafana Dashboard Taxonomy and Shared Design System | Accepted |
+| [0015](0015-metro-witness-via-generic-query.md) | Metro witness observability via the generic Query escape hatch | Accepted |
+| [0016](0016-per-array-rendering-and-series-colour.md) | Per-Array Rendering and Series Colour by Entity | Accepted |
