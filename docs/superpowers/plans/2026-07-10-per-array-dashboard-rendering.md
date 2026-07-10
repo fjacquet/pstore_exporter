@@ -177,6 +177,13 @@ func loadPanels(t *testing.T) []panelRef {
 		if err != nil {
 			return err
 		}
+		// node-exporter-full.json is the verbatim Grafana community dashboard
+		// 1860 (uid rYdddlPWk), vendored for the host running the exporter. Its
+		// panels query host metrics (node_cpu_*, no `array` label) and are not
+		// ours to restyle, so the PowerStore conventions do not apply to it.
+		if filepath.Base(path) == "node-exporter-full.json" {
+			return nil
+		}
 		for _, p := range dash.Panels {
 			if p.Type == "row" {
 				continue
