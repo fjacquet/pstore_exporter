@@ -64,7 +64,7 @@
       },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
       "targets": [
-        { "refId": "A", "expr": "count(powerstore_drive_state{array=~\"$array\",state!=\"Healthy\"})", "legendFormat": "Unhealthy" }
+        { "refId": "A", "expr": "sum by (array) (powerstore_drive_state{array=~\"$array\",state!=\"Healthy\"}) or sum by (array) (powerstore_up{array=~\"$array\"} * 0)", "legendFormat": "{{array}}" }
       ]
     },
     {
@@ -84,7 +84,7 @@
       },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "textMode": "auto" },
       "targets": [
-        { "refId": "A", "expr": "count(powerstore_drive_wear_level_ratio{array=~\"$array\"} > 0.8)", "legendFormat": "Worn" }
+        { "refId": "A", "expr": "sum by (array) (powerstore_drive_wear_level_ratio{array=~\"$array\"} > bool 0.8)", "legendFormat": "{{array}}" }
       ]
     },
     {
