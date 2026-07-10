@@ -119,8 +119,13 @@ sum by (array) (powerstore_drive_state{array=~"$array",state!="Healthy"})
 redundant: it pins the filler's label set to `{array}` so the `or` union is label-compatible
 with the left side. `Worn Drives > 80%` uses the same shape with `> bool 0.8`.
 
-This applies to `Unhealthy Drives`, `Worn Drives > 80%`, `Active Critical Alerts` and
-`Sessions in Bad State`, closing Problem 3 in the same pass.
+This applies to `Unhealthy Drives` (on both `hardware/01-drives` and `overview/00-fleet-health`)
+and `Sessions in Bad State`, closing Problem 3 in the same pass.
+
+Two panels that look like they need the filler do not. `powerstore_alert_active` already emits
+a stable zero-valued series for every known severity (`derive_alerts.go`), so
+`Active Critical Alerts` never vanishes. `powerstore_drive_wear_level_ratio` is emitted once
+per drive regardless of value, so `sum by (array) (… > bool 0.8)` reports `0` unaided.
 
 ### D2 — Colour by entity, direction by line style
 
@@ -161,16 +166,25 @@ customer rather than by CI.
 Add `grafana/dashboards_lint_test.go` (package `grafana_test`, test files only). It walks
 `dashboards/**/*.json`, decodes each into `map[string]any`, and asserts per panel target:
 
-1. Any target whose `expr` contains an aggregation operator (`sum`, `avg`, `count`, `min`,
-   `max`) applied across a metric carrying the `array` label must include `by (array)`.
+1. Any target whose `expr` applies an aggregation operator (`sum`, `avg`, `count`, `min`,
+   `max`) with **no `by (…)` clause at all** fails. A bare aggregation collapses every
+   dimension to one value; that is precisely the defect being fixed.
 2. No override whose matcher is `/ read$/` or `/ write$/` may set `color.mode: fixed`.
-3. Every `timeseries` panel with more than one series-producing target, or a `by (…)`
-   grouping, declares `color.mode: palette-classic-by-name`.
+3. Any `timeseries` panel carrying a `/ read$/` or `/ write$/` override must declare
+   `color.mode: palette-classic-by-name` in `defaults`.
 
 Table-driven over the parsed JSON, standard library only, no new dependency, runs inside the
 existing `make ci`. Rule 1 is deliberately syntactic — it greps the expression string rather
 than parsing PromQL. It will not catch every case and is not meant to; it catches the class
 that just shipped.
+
+Rule 1 deliberately permits `sum by (appliance_name) (…)` — a grouping that omits `array`
+while grouping by something else. That is a **separate latent bug**: two arrays that share an
+appliance, volume or volume-group name will silently merge on `block/02-appliances`,
+`block/03-volumes`, `block/04-volume-groups` and `file/01-file-systems`. PowerStore derives
+default appliance names from the serial number so a collision is unlikely in practice, and
+widening those groupings changes legends on every single-array install. Tracked as a
+follow-up; out of scope here.
 
 ### D4 — Documentation
 
