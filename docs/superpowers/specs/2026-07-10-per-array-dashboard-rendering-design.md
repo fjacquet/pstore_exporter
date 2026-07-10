@@ -129,8 +129,11 @@ per drive regardless of value, so `sum by (array) (… > bool 0.8)` reports `0` 
 
 ### D2 — Colour by entity, direction by line style
 
-Hue derives from the series name so an array or appliance keeps one colour across every
-panel and every dashboard:
+Hue derives from the series name so each array or appliance is distinguishable within any
+one panel and its colour is stable across refreshes. (Implementation note: because
+`palette-classic-by-name` hashes the *full* display name, which includes the read/write
+suffix, and legends differ between panels, the same entity is not guaranteed the same hue on a
+different panel — only line style carries direction consistently. See ADR-0016.)
 
 ```json
 "defaults": { "color": { "mode": "palette-classic-by-name" } }
@@ -163,8 +166,9 @@ ADR-0014 deferred a consistency linter: *"remains a possible later follow-up if 
 a problem."* Drift is now a problem — fourteen panels across six dashboards, surfaced by a
 customer rather than by CI.
 
-Add `grafana/dashboards_lint_test.go` (package `grafana_test`, test files only). It walks
-`dashboards/**/*.json`, decodes each into `map[string]any`, and asserts per panel target:
+Add a test-only linter (shipped as `internal/dashboards/lint_test.go`, package `dashboards`).
+It walks `grafana/dashboards/**/*.json` (excluding the vendored `node-exporter-full.json`),
+decodes each panel, and asserts per panel target:
 
 1. Any target whose `expr` applies an aggregation operator (`sum`, `avg`, `count`, `min`,
    `max`) with **no `by (…)` clause at all** fails. A bare aggregation collapses every

@@ -104,21 +104,29 @@ topk(10, sum by (volume_name) (powerstore_volume_total_iops{array=~"$array"}))
 These rules are enforced by `go test ./internal/dashboards/` and therefore by `make ci`.
 See [ADR-0016](adr/0016-per-array-rendering-and-series-colour.md).
 
-**Group by `array`.** Every aggregating expression carries a `by (...)` clause including
-`array`, and legends as `{{array}}`. A bare `avg(...)` or `sum(...)` blends every selected
-array into one unattributable number.
+**Group by `array` on fleet/cluster rollup panels.** Every panel that aggregates a
+cluster- or appliance-wide value across arrays carries a `by (...)` clause including `array`,
+and legends as `{{array}}`. A bare `avg(...)` or `sum(...)` blends every selected array into
+one unattributable number. Entity-scoped panels group by their entity instead
+(`sum by (volume_name)`, `by (appliance_name)`, …); those do not carry `array`, so two arrays
+sharing an entity name would merge — a tracked follow-up, not a per-array-panel concern
+(see [ADR-0016](adr/0016-per-array-rendering-and-series-colour.md)).
 
 **Never let a healthy array vanish.** `powerstore_drive_state` and
 `powerstore_replication_session_state` are info series whose value is always `1`; a healthy
 array matches no series and its tile disappears. Zero-fill with `powerstore_up`, whose only
 label is `array`:
 
-    sum by (array) (powerstore_drive_state{array=~"$array",state!="Healthy"})
-      or sum by (array) (powerstore_up{array=~"$array"} * 0)
+```promql
+sum by (array) (powerstore_drive_state{array=~"$array",state!="Healthy"})
+  or sum by (array) (powerstore_up{array=~"$array"} * 0)
+```
 
 For numeric comparisons use the `bool` modifier instead, which keeps the series:
 
-    sum by (array) (powerstore_port_link_up{array=~"$array"} == bool 0)
+```promql
+sum by (array) (powerstore_port_link_up{array=~"$array"} == bool 0)
+```
 
 `powerstore_alert_active` already emits a stable zero series per known severity and needs
 neither treatment.
@@ -126,7 +134,7 @@ neither treatment.
 **Hue is identity, line style is direction.** Timeseries panels set
 `"color": {"mode": "palette-classic-by-name"}`. Hue is derived deterministically from each
 series' name, so within any panel every array or appliance is distinguishable and its colour
-is stable across refreshes — but the hash includes the ` read`/` write` suffix and legends
+is stable across refreshes — but the hash includes the read/write suffix and legends
 differ between panels, so the same entity is not guaranteed the same hue on a different panel
 or dashboard. Direction is shown by line style — read solid, write dashed via a `/ write$/`
 override setting `custom.lineStyle`. Panels whose colour encodes a threshold rather than an

@@ -202,8 +202,13 @@ func loadPanels(t *testing.T) []panelRef {
 }
 
 // bareAggregation matches an aggregation operator applied directly to a
-// parenthesised expression, i.e. one with no `by (...)` clause.
-var bareAggregation = regexp.MustCompile(`\b(sum|avg|count|min|max)\s*\(`)
+// parenthesised expression — the bare `sum(...)` form. The grouped `sum by (array) (...)`
+// form is NOT matched: after the operator comes ` by`, not `(`, so `\s*\(` fails. This is why
+// no separate "contains by (" skip is needed — such a skip would false-negate a mixed
+// expression like `sum(foo) / sum by (array) (bar)`. topk/bottomk/count_values are excluded:
+// they return several series rather than collapsing to one value (the legitimate
+// `topk(10, sum by (volume_name) (...))` panels).
+var bareAggregation = regexp.MustCompile(`\b(sum|avg|count|min|max|stddev|stdvar|group|quantile)\s*\(`)
 
 // TestNoBareAggregation enforces R1: a panel expression must never collapse every
 // dimension to a single value. With more than one array selected such a panel
@@ -218,9 +223,6 @@ func TestNoBareAggregation(t *testing.T) {
 				continue
 			}
 			if !bareAggregation.MatchString(tgt.Expr) {
-				continue
-			}
-			if strings.Contains(tgt.Expr, "by (") {
 				continue
 			}
 			t.Errorf("%s: panel %q aggregates with no `by (...)` clause, so it "+

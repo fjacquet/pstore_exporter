@@ -35,7 +35,7 @@ no tile — indistinguishable from an array that is not being scraped.
   `color.mode: palette-classic-by-name`, which derives hue from each series' full display name.
   Within any one panel every array or appliance is therefore distinguishable, and its colour is
   stable across refreshes; `/ write$/` sets `custom.lineStyle` to a dash. Because the hash includes
-  the ` read`/` write` suffix and legends differ between panels, the same entity is not guaranteed
+  the read/write suffix and legends differ between panels, the same entity is not guaranteed
   the same hue on a different panel or dashboard — only line style (solid vs. dashed) carries
   direction consistently. `stat` panels have no line and simply drop the overrides.
   Threshold-coloured panels (CPU, drive wear, capacity gauges) are unaffected: their hue encodes a
