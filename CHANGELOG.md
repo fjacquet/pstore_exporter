@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-14
+
+### Added
+
+- **Env-driven TLS verification skip (`PSTORE1_SKIP_CERTIFICATE`)** — the per-array `insecureSkipVerify` setting now accepts either a native YAML boolean or a `${VAR}` environment reference (e.g. `${PSTORE1_SKIP_CERTIFICATE}`), resolved at startup, matching the existing `${PSTORE1_*}` pattern. The active default is unchanged; the env form is opt-in via a documented comment in `config.yaml`.
+
 ## [1.0.0] - 2026-07-10
 
 First stable release. Makes the bundled Grafana dashboards correct when one
