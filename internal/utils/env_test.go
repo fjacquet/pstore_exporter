@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/fjacquet/pstore_exporter/internal/models"
+	"gopkg.in/yaml.v2"
 )
 
 func TestExpandEnvSuccess(t *testing.T) {
@@ -72,5 +73,74 @@ func TestResolveSecretsUnsetUsernameFails(t *testing.T) {
 
 	if err := ResolveSecrets(cfg); err == nil {
 		t.Error("expected error for unset username variable, got nil")
+	}
+}
+
+// decodedArrayConfig decodes a single-array YAML fragment through the real
+// yaml.v2 path so InsecureSkipVerify goes through its actual UnmarshalYAML,
+// matching how config.yaml is loaded in production.
+func decodedArrayConfig(t *testing.T, insecureSkipVerifyYAML string) models.ArrayConfig {
+	t.Helper()
+	doc := "name: pstore-1\nendpoint: https://10.0.0.1/api/rest\nusername: u\npassword: p\n" + insecureSkipVerifyYAML
+	var a models.ArrayConfig
+	if err := yaml.Unmarshal([]byte(doc), &a); err != nil {
+		t.Fatalf("yaml.Unmarshal: %v", err)
+	}
+	return a
+}
+
+func TestResolveSecretsInsecureSkipVerifyNativeBoolPassesThrough(t *testing.T) {
+	a := decodedArrayConfig(t, "insecureSkipVerify: true\n")
+	cfg := &models.Config{Arrays: []models.ArrayConfig{a}}
+
+	if err := ResolveSecrets(cfg); err != nil {
+		t.Fatalf("ResolveSecrets: %v", err)
+	}
+	if !cfg.Arrays[0].InsecureSkipVerify.Bool() {
+		t.Error("want native bool true to remain true after ResolveSecrets")
+	}
+}
+
+func TestResolveSecretsInsecureSkipVerifyEnvVarTrue(t *testing.T) {
+	t.Setenv("PSTORE1_SKIP_CERTIFICATE", "true")
+	a := decodedArrayConfig(t, "insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}\n")
+	cfg := &models.Config{Arrays: []models.ArrayConfig{a}}
+
+	if err := ResolveSecrets(cfg); err != nil {
+		t.Fatalf("ResolveSecrets: %v", err)
+	}
+	if !cfg.Arrays[0].InsecureSkipVerify.Bool() {
+		t.Error("want ${PSTORE1_SKIP_CERTIFICATE}=true to resolve to true")
+	}
+}
+
+func TestResolveSecretsInsecureSkipVerifyOmittedDefaultsFalse(t *testing.T) {
+	a := decodedArrayConfig(t, "")
+	cfg := &models.Config{Arrays: []models.ArrayConfig{a}}
+
+	if err := ResolveSecrets(cfg); err != nil {
+		t.Fatalf("ResolveSecrets: %v", err)
+	}
+	if cfg.Arrays[0].InsecureSkipVerify.Bool() {
+		t.Error("want omitted insecureSkipVerify to default to false")
+	}
+}
+
+func TestResolveSecretsInsecureSkipVerifyUnsetVarFails(t *testing.T) {
+	a := decodedArrayConfig(t, "insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE_DEFINITELY_UNSET}\n")
+	cfg := &models.Config{Arrays: []models.ArrayConfig{a}}
+
+	if err := ResolveSecrets(cfg); err == nil {
+		t.Error("expected error for unset insecureSkipVerify variable, got nil")
+	}
+}
+
+func TestResolveSecretsInsecureSkipVerifyNonBooleanErrors(t *testing.T) {
+	t.Setenv("PSTORE1_SKIP_CERTIFICATE", "maybe")
+	a := decodedArrayConfig(t, "insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}\n")
+	cfg := &models.Config{Arrays: []models.ArrayConfig{a}}
+
+	if err := ResolveSecrets(cfg); err == nil {
+		t.Error("expected error for non-boolean insecureSkipVerify value, got nil")
 	}
 }

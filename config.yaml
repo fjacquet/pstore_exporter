@@ -34,6 +34,11 @@ arrays:
     endpoint: "https://${PSTORE1_HOSTNAME}/api/rest"
     username: "${PSTORE1_USERNAME}"
     password: "${PSTORE1_PASSWORD}"
+    # Skip TLS certificate verification (INSECURE — use only on a trusted network
+    # or with self-signed management certs). Accepts a native boolean or a ${VAR}
+    # env reference resolved at startup; to drive it from the environment instead
+    # of a literal, replace the line below with:
+    #   insecureSkipVerify: "${PSTORE1_SKIP_CERTIFICATE}"
     insecureSkipVerify: true
     # interval: Five_Mins
     # maxConcurrency: 2     # optional: override the fleet cap just for this array

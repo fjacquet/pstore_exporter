@@ -60,12 +60,12 @@ func NewArrayClient(cfg models.ArrayConfig, maxConcurrency int, trace bool) (*Ar
 	if maxConcurrency < 1 {
 		maxConcurrency = defaultMaxConcurrency
 	}
-	if cfg.InsecureSkipVerify {
+	if cfg.InsecureSkipVerify.Bool() {
 		logging.LogWarn(fmt.Sprintf("array %q: InsecureSkipVerify is enabled; TLS certificate verification is disabled", cfg.Name))
 	}
 
 	opts := gopowerstore.NewClientOptions()
-	opts.SetInsecure(cfg.InsecureSkipVerify)
+	opts.SetInsecure(cfg.InsecureSkipVerify.Bool())
 	opts.SetDefaultTimeout(defaultTimeout)
 
 	gp, err := gopowerstore.NewClientWithArgs(cfg.Endpoint, cfg.Username, cfg.Password, opts)
@@ -80,7 +80,7 @@ func NewArrayClient(cfg models.ArrayConfig, maxConcurrency int, trace bool) (*Ar
 		endpoint:       cfg.Endpoint,
 		username:       cfg.Username,
 		password:       cfg.Password,
-		insecure:       cfg.InsecureSkipVerify,
+		insecure:       cfg.InsecureSkipVerify.Bool(),
 		trace:          trace,
 		maxConcurrency: maxConcurrency,
 	}, nil

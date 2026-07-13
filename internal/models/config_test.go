@@ -1,6 +1,11 @@
 package models
 
-import "testing"
+import (
+	"errors"
+	"testing"
+
+	"gopkg.in/yaml.v2"
+)
 
 func validArray() ArrayConfig {
 	return ArrayConfig{Name: "p1", Endpoint: "https://10.0.0.1/api/rest", Username: "admin", Password: "secret"}
@@ -79,5 +84,118 @@ func TestValidateRejectsNegativePerArrayMaxConcurrency(t *testing.T) {
 	c := &Config{Arrays: []ArrayConfig{a}}
 	if err := c.Validate(); err == nil {
 		t.Fatal("expected error for negative array maxConcurrency")
+	}
+}
+
+func TestEnvBoolUnmarshalNativeBool(t *testing.T) {
+	var a ArrayConfig
+	if err := yaml.Unmarshal([]byte("insecureSkipVerify: true\n"), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !a.InsecureSkipVerify.Bool() {
+		t.Fatal("want native bool true to resolve to true without calling Resolve")
+	}
+}
+
+func TestEnvBoolUnmarshalNativeBoolFalse(t *testing.T) {
+	var a ArrayConfig
+	if err := yaml.Unmarshal([]byte("insecureSkipVerify: false\n"), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if a.InsecureSkipVerify.Bool() {
+		t.Fatal("want native bool false to resolve to false")
+	}
+}
+
+func TestEnvBoolUnmarshalOmittedDefaultsFalse(t *testing.T) {
+	var a ArrayConfig
+	if err := yaml.Unmarshal([]byte("name: p1\n"), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if a.InsecureSkipVerify.Bool() {
+		t.Fatal("want omitted insecureSkipVerify to default to false")
+	}
+}
+
+func TestEnvBoolUnmarshalEnvRefStaysUnresolvedUntilResolve(t *testing.T) {
+	var a ArrayConfig
+	if err := yaml.Unmarshal([]byte("insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}\n"), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if a.InsecureSkipVerify.Bool() {
+		t.Fatal("want ${VAR} reference to resolve to false (zero value) before Resolve is called")
+	}
+}
+
+func TestEnvBoolResolveExpandsVarToTrue(t *testing.T) {
+	var a ArrayConfig
+	if err := yaml.Unmarshal([]byte("insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}\n"), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	expand := func(s string) (string, error) { return "true", nil }
+	if err := a.InsecureSkipVerify.Resolve(expand); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if !a.InsecureSkipVerify.Bool() {
+		t.Fatal("want resolved value true")
+	}
+}
+
+func TestEnvBoolResolveNoOpWhenNativeBool(t *testing.T) {
+	b := NewEnvBool(true)
+	expand := func(s string) (string, error) {
+		t.Fatal("expand should not be called for a native bool value")
+		return "", nil
+	}
+	if err := b.Resolve(expand); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if !b.Bool() {
+		t.Fatal("want native bool to remain true")
+	}
+}
+
+func TestEnvBoolResolveEmptyExpansionDefaultsFalse(t *testing.T) {
+	var a ArrayConfig
+	if err := yaml.Unmarshal([]byte("insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}\n"), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	expand := func(s string) (string, error) { return "", nil }
+	if err := a.InsecureSkipVerify.Resolve(expand); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if a.InsecureSkipVerify.Bool() {
+		t.Fatal("want empty expansion to resolve to false")
+	}
+}
+
+func TestEnvBoolResolveNonBooleanErrors(t *testing.T) {
+	var a ArrayConfig
+	if err := yaml.Unmarshal([]byte("insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}\n"), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	expand := func(s string) (string, error) { return "not-a-bool", nil }
+	if err := a.InsecureSkipVerify.Resolve(expand); err == nil {
+		t.Fatal("expected error for non-boolean expansion")
+	}
+}
+
+func TestEnvBoolResolvePropagatesExpandError(t *testing.T) {
+	var a ArrayConfig
+	if err := yaml.Unmarshal([]byte("insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}\n"), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	wantErr := errors.New("unset variable")
+	expand := func(s string) (string, error) { return "", wantErr }
+	if err := a.InsecureSkipVerify.Resolve(expand); !errors.Is(err, wantErr) {
+		t.Fatalf("Resolve error = %v, want %v", err, wantErr)
+	}
+}
+
+func TestEnvBoolUnmarshalRejectsNonScalar(t *testing.T) {
+	var a ArrayConfig
+	err := yaml.Unmarshal([]byte("insecureSkipVerify: [true, false]\n"), &a)
+	if err == nil {
+		t.Fatal("expected error for non-scalar insecureSkipVerify")
 	}
 }

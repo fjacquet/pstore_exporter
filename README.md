@@ -78,13 +78,16 @@ arrays:
     endpoint: "https://10.0.0.1/api/rest"
     username: admin
     password: "${PSTORE1_PASSWORD}"
-    insecureSkipVerify: true
+    insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}
   - name: pstore-dr
     endpoint: "https://10.0.0.2/api/rest"
     username: admin
     password: "${PSTORE2_PASSWORD}"
-    insecureSkipVerify: true
+    insecureSkipVerify: ${PSTORE2_SKIP_CERTIFICATE}
 ```
+
+`insecureSkipVerify` accepts either a native boolean (`true`/`false`) or a `${VAR}`
+environment reference resolved at startup, same as `endpoint`/`username`/`password`.
 
 ## PromQL guidance
 
