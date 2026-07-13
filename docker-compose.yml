@@ -17,6 +17,7 @@ services:
       - PSTORE1_HOSTNAME=${PSTORE1_HOSTNAME:-10.0.0.1}
       - PSTORE1_USERNAME=${PSTORE1_USERNAME:-admin}
       - PSTORE1_PASSWORD=${PSTORE1_PASSWORD:-}
+      - PSTORE1_SKIP_CERTIFICATE=${PSTORE1_SKIP_CERTIFICATE:-false}
     restart: unless-stopped
 
   prometheus:

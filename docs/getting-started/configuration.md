@@ -31,7 +31,7 @@ arrays:
     endpoint: "https://${PSTORE1_HOSTNAME}/api/rest"  # PowerStore management IP or FQDN
     username: "${PSTORE1_USERNAME}"
     password: "${PSTORE1_PASSWORD}"
-    insecureSkipVerify: true
+    insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}
     # interval: Five_Mins   # optional: override the stats interval on the PowerStore side
     # maxConcurrency: 2     # optional: override the fleet concurrency cap for this array
     #                       # (e.g. a PowerStore 500; use 1 for fully sequential)
@@ -50,7 +50,8 @@ arrays:
 | `opentelemetry.tracing` | `enabled`, `endpoint`, `samplingRate` | OTLP gRPC tracing for diagnosing slow cycles. |
 | `arrays[]` | `name` | Unique; becomes the `array` label/attribute on every metric. |
 | `arrays[]` | `endpoint` | Full URL to the PowerStore REST API, e.g. `https://10.0.0.1/api/rest`. |
-| `arrays[]` | `username`, `password` | Credentials. `insecureSkipVerify` accepts self-signed management certificates. |
+| `arrays[]` | `username`, `password` | Credentials. |
+| `arrays[]` | `insecureSkipVerify` | Skip TLS certificate verification (accepts self-signed management certificates). Accepts a native boolean or a `${VAR}` environment reference (e.g. `${PSTORE1_SKIP_CERTIFICATE}`), resolved the same way as `endpoint`/`username`/`password`. Defaults to `false`. |
 
 ## Tuning concurrency for small or busy arrays
 
@@ -89,9 +90,10 @@ Guidance:
 
 ## Environment variables / .env
 
-`${ENV_VAR}` references in `endpoint`, `username`, and `password` are expanded at
-config load; an unset variable fails startup loudly instead of silently
-authenticating with an empty value. `passwordFile` is still supported.
+`${ENV_VAR}` references in `endpoint`, `username`, `password`, and
+`insecureSkipVerify` are expanded at config load; an unset variable fails startup
+loudly instead of silently authenticating with an empty value (or silently
+disabling TLS verification). `passwordFile` is still supported.
 
 ### .env loading
 
@@ -124,12 +126,12 @@ arrays:
     endpoint: "https://10.0.0.1/api/rest"
     username: admin
     password: "${PSTORE1_PASSWORD}"
-    insecureSkipVerify: true
+    insecureSkipVerify: ${PSTORE1_SKIP_CERTIFICATE}
   - name: pstore-dr
     endpoint: "https://10.0.0.2/api/rest"
     username: admin
     password: "${PSTORE2_PASSWORD}"
-    insecureSkipVerify: true
+    insecureSkipVerify: ${PSTORE2_SKIP_CERTIFICATE}
 ```
 
 ## Secrets

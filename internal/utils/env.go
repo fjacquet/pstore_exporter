@@ -63,6 +63,10 @@ func ResolveSecrets(cfg *models.Config) error {
 			return fmt.Errorf("array %q password: %w", a.Name, err)
 		}
 		a.Password = password
+
+		if err := a.InsecureSkipVerify.Resolve(ExpandEnv); err != nil {
+			return fmt.Errorf("array %q insecureSkipVerify: %w", a.Name, err)
+		}
 	}
 	return nil
 }
