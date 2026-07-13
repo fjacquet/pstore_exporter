@@ -33,7 +33,8 @@ arrays:
     password: "${PSTORE1_PASSWORD}"
     insecureSkipVerify: true
     # interval: Five_Mins   # optional: override the stats interval on the PowerStore side
-    # maxConcurrency: 8     # optional: override the fleet concurrency cap for this array
+    # maxConcurrency: 2     # optional: override the fleet concurrency cap for this array
+    #                       # (e.g. a PowerStore 500; use 1 for fully sequential)
 ```
 
 ## Sections
@@ -44,12 +45,47 @@ arrays:
 | `server` | `logName` | Log file path (use an **absolute** path so it resolves the same in containers); empty string logs to stdout (recommended under systemd/k8s). If the path is not writable, logging falls back to stdout with a warning instead of failing to start. |
 | `collection` | `interval` | Background poll period for every array. Matches Prometheus scrape cadence well at `30s`. |
 | `collection` | `timeout` | Per-array timeout; a slow/unreachable array fails fast without blocking others. |
-| `collection` | `maxConcurrency` | Cap on concurrent PowerStore API requests per array's per-entity fan-outs (replication, FS/VG perf, appliance enumeration). Default `16`. Lower it to reduce load on a busy/degraded array — cycles run slower, so a larger `timeout` may be needed. Override per array with `arrays[].maxConcurrency`. |
+| `collection` | `maxConcurrency` | Cap on concurrent PowerStore API requests per array's per-entity fan-outs (replication, FS/VG perf, appliance enumeration). Default `16`. Valid range: `1` (fully sequential — gentlest load) up to any positive integer; `0`/unset uses the default. Lower it to reduce load on a busy/degraded array or an entry-level model — cycles run slower, so a larger `timeout` may be needed. Override per array with `arrays[].maxConcurrency` to throttle one array without slowing the rest of the fleet. See [Tuning concurrency for small or busy arrays](#tuning-concurrency-for-small-or-busy-arrays). |
 | `opentelemetry.metrics` | `enabled`, `endpoint`, `interval` | OTLP gRPC metric push. |
 | `opentelemetry.tracing` | `enabled`, `endpoint`, `samplingRate` | OTLP gRPC tracing for diagnosing slow cycles. |
 | `arrays[]` | `name` | Unique; becomes the `array` label/attribute on every metric. |
 | `arrays[]` | `endpoint` | Full URL to the PowerStore REST API, e.g. `https://10.0.0.1/api/rest`. |
 | `arrays[]` | `username`, `password` | Credentials. `insecureSkipVerify` accepts self-signed management certificates. |
+
+## Tuning concurrency for small or busy arrays
+
+Each collection cycle fans out per-entity PowerStore API calls — replication sessions,
+file-system and volume-group performance, appliance enumeration — and `maxConcurrency`
+caps how many of those run at once against a **single** array. The default of `16` suits
+mid-range and larger models; on an entry-level array such as a **PowerStore 500**, or any
+array that is busy or degraded, that fan-out can add noticeable management-plane load.
+
+Lower the cap for the affected array. Because the per-array setting overrides the fleet
+default, you can throttle one small array without slowing collection for the rest:
+
+```yaml
+collection:
+  maxConcurrency: 16          # fleet default — unchanged for the bigger arrays
+
+arrays:
+  - name: pstore-500
+    endpoint: "https://10.0.0.9/api/rest"
+    username: admin
+    password: "${PSTORE500_PASSWORD}"
+    insecureSkipVerify: true
+    maxConcurrency: 2         # gentle on an entry-level array; drop to 1 if still stressed
+```
+
+Guidance:
+
+- **Start at `2`**, and set `1` (fully sequential — one API request in flight at a time)
+  if the array is still stressed. `1` is the floor; there is no separate "off" value.
+- **Lower concurrency means longer cycles.** If a cycle starts hitting
+  `collection.timeout` (default `20s`), raise the timeout, and/or lengthen
+  `collection.interval` so cycles don't overlap.
+- **Diminishing returns:** going from `2` to `1` roughly halves peak concurrent load but
+  can noticeably lengthen cycles on arrays with many entities. Measure with `--once
+  --debug` before and after.
 
 ## Environment variables / .env
 
