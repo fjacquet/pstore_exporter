@@ -30,6 +30,12 @@ COPY config.yaml /etc/pstore_exporter/config.yaml
 
 EXPOSE 9446
 
+# /livez never depends on target reachability or the collection cycle, so it
+# can never flag a healthy process as down over an unreachable PowerStore
+# array (see ADR-0017 / architecture.md "Health probes").
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:9446/livez || exit 1
+
 USER pstore
 
 ENTRYPOINT ["/usr/bin/pstore_exporter"]
