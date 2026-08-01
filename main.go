@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -117,6 +118,8 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 	mux.Handle(cfg.Server.URI, promhttp.HandlerFor(s.registry, promhttp.HandlerOpts{}))
 	mux.HandleFunc("/health", s.healthHandler)
+	mux.HandleFunc("/livez", staticOKHandler)
+	mux.HandleFunc("/readyz", staticOKHandler)
 
 	s.httpSrv = &http.Server{
 		Addr:              cfg.GetServerAddress(),
@@ -382,24 +385,37 @@ func (s *Server) Shutdown() error {
 	return nil
 }
 
-// healthHandler reports 200 if any array was scraped successfully, 503 if all are
-// down, and 200 "starting" before the first cycle populates the store.
+// healthHandler always answers 200. The JSON body reports every configured
+// array's cached status from the last collection cycle.
 func (s *Server) healthHandler(w http.ResponseWriter, _ *http.Request) {
+	type arrayHealth struct {
+		Array      string `json:"array"`
+		OK         bool   `json:"ok"`
+		LastScrape string `json:"last_scrape"`
+		Err        string `json:"err,omitempty"`
+	}
 	snap := s.store.Load()
-	if len(snap.PerArray) == 0 {
-		w.WriteHeader(http.StatusOK)
-		_, _ = fmt.Fprintln(w, "OK (starting)")
-		return
-	}
+	out := struct {
+		Arrays []arrayHealth `json:"arrays"`
+	}{}
 	for _, as := range snap.PerArray {
-		if as.Up {
-			w.WriteHeader(http.StatusOK)
-			_, _ = fmt.Fprintln(w, "OK")
-			return
-		}
+		out.Arrays = append(out.Arrays, arrayHealth{
+			Array:      as.Array,
+			OK:         as.Up,
+			LastScrape: as.LastScrape.Format(time.RFC3339),
+			Err:        as.ScrapeError,
+		})
 	}
-	w.WriteHeader(http.StatusServiceUnavailable)
-	_, _ = fmt.Fprintln(w, "UNHEALTHY: all arrays unreachable")
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
+}
+
+// staticOKHandler always answers 200 — no array state, no collection
+// state, nothing that can make it fail. /livez and /readyz both use it: a
+// probe wired here can never be the reason a healthy process gets restarted
+// or pulled from rotation.
+func staticOKHandler(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
 
 func validateConfig(configPath string) (*models.Config, error) {
