@@ -26,8 +26,10 @@ kubectl rollout status deploy/pstore-exporter
 - **Security context.** Runs as non-root (`uid 10001`), `readOnlyRootFilesystem: true`,
   all capabilities dropped, `seccompProfile: RuntimeDefault`. A small `emptyDir` is
   mounted at `/tmp`.
-- **Probes.** Liveness hits `/metrics` (process health, always 200 while serving);
-  readiness hits `/health` (ready only once at least one array has been collected).
+- **Probes.** Liveness hits `/metrics` (process health, always 200 while serving).
+  Prefer `/livez`/`/readyz` for liveness/readiness — both always answer 200, with
+  no dependency on array reachability or the collection cycle. `/health` is
+  informational: JSON body (`arrays: [{array, ok, last_scrape, err}]`), always 200.
 - **Secrets.** Passwords come from the Secret via `envFrom` and are interpolated into
   `config.yaml` as `${PSTORE1_PASSWORD}`. Prefer an external secret manager
   (External Secrets Operator, sealed-secrets, etc.) over committing the example Secret.

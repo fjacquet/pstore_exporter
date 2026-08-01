@@ -14,7 +14,8 @@ curl -s localhost:9446/health
 ```
 
 You should see `powerstore_up{array="pstore-1"} 1` once the first collection cycle
-completes, and `/health` returns `200 OK`.
+completes, and `/health` returns `200 OK` with a JSON body
+(`{"arrays":[{"array":"pstore-1","ok":true,"last_scrape":"...","err":""}]}`).
 
 ## One-shot mode
 

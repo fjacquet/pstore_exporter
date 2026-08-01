@@ -53,11 +53,13 @@ production, provide a valid certificate and leave this option unset (or `false`)
 
 ### Exposed Endpoints
 
-The exporter exposes only two HTTP endpoints:
+The exporter exposes these HTTP endpoints:
 
 - `/metrics` — Prometheus metrics (read-only, no write path).
-- `/health` — liveness/readiness probe (returns `"starting"` or `"ok"`,
-  no sensitive data).
+- `/health` — informational, always 200; JSON body reporting each array's
+  cached status (`arrays: [{array, ok, last_scrape, err}]`, no sensitive
+  data).
+- `/livez` / `/readyz` — probe endpoints, always 200, no array state.
 
 There is no authentication on these endpoints by default. If your environment
 requires it, place the exporter behind a reverse proxy or use Prometheus's

@@ -53,7 +53,7 @@ docker compose -f docker-compose.ghcr.yml pull
 
 | Service | Port | Purpose |
 |---|---|---|
-| `pstore_exporter` | 9446 | `/metrics` + `/health` |
+| `pstore_exporter` | 9446 | `/metrics` + `/health` + `/livez` + `/readyz` |
 | `prometheus` | 9090 | scrapes the exporter (`prometheus.yml`) |
 | `grafana` | 3000 | dashboards (login `admin` / `admin`), Prometheus datasource + block/file folders auto-provisioned |
 | `otel-collector` | 4317 / 8889 | receives the OTLP push (when enabled) and re-exposes it |
