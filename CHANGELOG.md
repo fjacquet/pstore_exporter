@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-01
+
 ### Added
 
 - `/livez` and `/readyz`: probe endpoints that always answer 200, with no
