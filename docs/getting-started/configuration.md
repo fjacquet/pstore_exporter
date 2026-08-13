@@ -174,6 +174,24 @@ with a quote), use `passwordFile` — it needs no escaping at all. When referenc
 var from `config.yaml` (`password: "${PSTORE1_PASSWORD}"`) the value is inserted verbatim
 and never re-scanned, so the env var itself may contain `$`, `${…}`, or any character.
 
+## Fallback values: `${VAR:-default}`
+
+A bare `${VAR}` **fails at startup** when the variable is unset — misconfiguration should
+be loud rather than authenticate with an empty secret. Where a safe default exists, write
+`${VAR:-default}` instead: the reference then never errors, falling back when the variable
+is unset *or* empty, exactly as in the shell and in `docker-compose.yml`. That is why the
+shipped `config.yaml` can be env-driven and still start out of the box:
+
+```yaml
+insecureSkipVerify: "${PSTORE1_SKIP_CERTIFICATE:-true}"
+```
+
+`true` is this exporter's original shipped default, so a host that never exported
+`PSTORE1_SKIP_CERTIFICATE` behaves exactly as before.
+
+Use it for settings, not for secrets — a `${PSTORE1_PASSWORD:-}` would silently turn a missing
+password into an empty one.
+
 ## Hot reload
 
 The configuration is reloaded without a restart on **SIGHUP** or when the config file

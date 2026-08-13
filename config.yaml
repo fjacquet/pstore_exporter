@@ -39,7 +39,10 @@ arrays:
     # env reference resolved at startup; to drive it from the environment instead
     # of a literal, replace the line below with:
     #   insecureSkipVerify: "${PSTORE1_SKIP_CERTIFICATE}"
-    insecureSkipVerify: true
+    # The fallback is ":-true", this repo's shipped default (PowerStore ships a self-signed
+    # management cert). A bare ${PSTORE1_SKIP_CERTIFICATE} would abort startup when unset,
+    # and a ":-false" fallback would silently start verifying against that cert.
+    insecureSkipVerify: "${PSTORE1_SKIP_CERTIFICATE:-true}"
     # interval: Five_Mins
     # maxConcurrency: 2     # optional: override the fleet cap just for this array
     #                       # (e.g. a PowerStore 500; use 1 for fully sequential)
