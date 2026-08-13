@@ -35,13 +35,13 @@ arrays:
     username: "${PSTORE1_USERNAME}"
     password: "${PSTORE1_PASSWORD}"
     # Skip TLS certificate verification (INSECURE — use only on a trusted network
-    # or with self-signed management certs). Accepts a native boolean or a ${VAR}
-    # env reference resolved at startup; to drive it from the environment instead
-    # of a literal, replace the line below with:
-    #   insecureSkipVerify: "${PSTORE1_SKIP_CERTIFICATE}"
-    # The fallback is ":-true", this repo's shipped default (PowerStore ships a self-signed
-    # management cert). A bare ${PSTORE1_SKIP_CERTIFICATE} would abort startup when unset,
-    # and a ":-false" fallback would silently start verifying against that cert.
+    # or with self-signed management certs). Accepts a native boolean, a ${VAR} env
+    # reference, or a ${VAR:-default} reference resolved at startup:
+    #   insecureSkipVerify: true
+    #   insecureSkipVerify: "${PSTORE1_SKIP_CERTIFICATE:-true}"
+    # The fallback below is ":-true", this repo's shipped default (PowerStore ships a
+    # self-signed management cert). A bare ${PSTORE1_SKIP_CERTIFICATE} would abort startup
+    # when unset, and a ":-false" fallback would silently start verifying against that cert.
     insecureSkipVerify: "${PSTORE1_SKIP_CERTIFICATE:-true}"
     # interval: Five_Mins
     # maxConcurrency: 2     # optional: override the fleet cap just for this array
