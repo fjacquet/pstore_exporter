@@ -5,9 +5,9 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS = -s -w -X main.version=$(VERSION)
 
 # Pinned tool versions (installed by `make tools`).
-GOLANGCI_VERSION  ?= v2.12.2
-GORELEASER_VERSION ?= v2.16.0
-GOVULNCHECK_VERSION ?= latest
+GOLANGCI_VERSION  ?= v2.13.2
+GORELEASER_VERSION ?= v2.18.0
+GOVULNCHECK_VERSION ?= v1.8.0
 
 # Skip flags for GoReleaser snapshot runs (no publish, no signing, no image push,
 # no Homebrew upload) — used for local SBOM generation and dry-run releases.
