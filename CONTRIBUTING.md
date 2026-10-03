@@ -7,7 +7,7 @@ workflow, invariants you must not break, and the PR checklist.
 
 | Tool | Version | How to get |
 |------|---------|------------|
-| Go | see `go.mod` (`go 1.26.4`) | <https://go.dev/dl/> |
+| Go | see `go.mod` (`go 1.27.1`) | <https://go.dev/dl/> |
 | golangci-lint | pinned in Makefile | `make tools` |
 | govulncheck | pinned in Makefile | `make tools` |
 | semgrep | latest | `pip install semgrep` or `brew install semgrep` |
