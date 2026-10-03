@@ -1,6 +1,6 @@
 module github.com/fjacquet/pstore_exporter
 
-go 1.26.6
+go 1.27.1
 
 require (
 	github.com/dell/gopowerstore v1.22.0
