@@ -4,7 +4,7 @@
 
 - A reachable PowerStore array — PowerStoreOS 3.x or later.
 - A PowerStore user with **monitor** (read-only) privileges.
-- One of: Go 1.27.1+ toolchain (build from source), Docker, or a Kubernetes cluster.
+- One of: Go 1.27.2+ toolchain (build from source), Docker, or a Kubernetes cluster.
 
 ## With Homebrew
 
